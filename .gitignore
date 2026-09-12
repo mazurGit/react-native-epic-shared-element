@@ -45,6 +45,7 @@ android.iml
 #
 example/ios/Pods
 example/ios/build-e2e/
+artifacts/
 
 # Ruby
 example/vendor/

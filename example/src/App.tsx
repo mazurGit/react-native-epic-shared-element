@@ -46,12 +46,6 @@ export default function App() {
                 <Text style={styles.artworkText}>A</Text>
               </View>
             </SharedElement>
-            <SharedElementTransition
-              startId="demo-artwork"
-              endId="demo-artwork-detail"
-              progress={progress}
-              mode="zoom"
-            />
           </View>
           <Pressable style={styles.button} onPress={toggle}>
             <Text style={styles.buttonText}>
@@ -59,6 +53,12 @@ export default function App() {
             </Text>
           </Pressable>
         </View>
+        <SharedElementTransition
+          startId="demo-artwork"
+          endId="demo-artwork-detail"
+          progress={progress}
+          mode="zoom"
+        />
       </SharedElementHost>
     </SharedElementProvider>
   );
