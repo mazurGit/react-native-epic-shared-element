@@ -9,6 +9,13 @@ import java.util.Collections;
 import java.util.List;
 
 public class EpicSharedElementPackage implements ReactPackage {
-  @Override public List<NativeModule> createNativeModules(ReactApplicationContext context) { return Collections.emptyList(); }
-  @Override public List<ViewManager<?, ?>> createViewManagers(ReactApplicationContext context) { return Arrays.<ViewManager<?, ?>>asList(new EpicSharedElementView.Manager()); }
+  @Override
+  public List<NativeModule> createNativeModules(ReactApplicationContext context) {
+    return Collections.emptyList();
+  }
+  @Override
+  @SuppressWarnings("rawtypes")
+  public List<ViewManager> createViewManagers(ReactApplicationContext context) {
+    return Arrays.<ViewManager>asList(new EpicSharedElementView.Manager());
+  }
 }

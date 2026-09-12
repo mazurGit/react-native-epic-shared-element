@@ -4,27 +4,230 @@ import android.content.Context;
 import android.os.SystemClock;
 import android.view.View;
 import android.view.ViewTreeObserver;
+
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactContext;
+import com.facebook.react.bridge.UIManager;
 import com.facebook.react.bridge.WritableMap;
-import com.facebook.react.uimanager.SimpleViewManager;
 import com.facebook.react.uimanager.ThemedReactContext;
+import com.facebook.react.uimanager.UIManagerHelper;
+import com.facebook.react.uimanager.ViewGroupManager;
 import com.facebook.react.uimanager.events.RCTEventEmitter;
+import com.facebook.react.views.view.ReactViewGroup;
 
-public class EpicSharedElementView extends View {
+import java.util.Collections;
+import java.util.Map;
+
+public class EpicSharedElementView extends ReactViewGroup {
+  private static final int UNSET_COORDINATE = Integer.MIN_VALUE;
+  private static final int NO_ANCESTOR = -1;
+
   private final int[] location = new int[2];
+  private final int[] ancestorLocation = new int[2];
   private final ViewTreeObserver.OnPreDrawListener preDrawListener = this::emitFrame;
-  private int lastX = Integer.MIN_VALUE, lastY = Integer.MIN_VALUE, lastWidth, lastHeight, ancestorTag = -1;
-  private long throttleMs, lastEmissionTime = Long.MIN_VALUE;
+
+  private int lastX = UNSET_COORDINATE;
+  private int lastY = UNSET_COORDINATE;
+  private int lastWidth;
+  private int lastHeight;
+  private int ancestorTag = NO_ANCESTOR;
+  private long throttleMs;
+  private long lastEmissionTime = Long.MIN_VALUE;
   private boolean trackFrame;
-  public EpicSharedElementView(Context context) { super(context); }
-  public void setThrottle(float value) { throttleMs = Math.max(0L, (long) value); }
-  public void setTrackFrame(boolean value) { trackFrame = value; if (!value) getViewTreeObserver().removeOnPreDrawListener(preDrawListener); else if (isAttachedToWindow()) getViewTreeObserver().addOnPreDrawListener(preDrawListener); lastX = Integer.MIN_VALUE; lastY = Integer.MIN_VALUE; lastEmissionTime = Long.MIN_VALUE; }
-  public void setAncestorTag(int value) { ancestorTag = value; lastX = Integer.MIN_VALUE; lastY = Integer.MIN_VALUE; }
-  @Override protected void onAttachedToWindow() { super.onAttachedToWindow(); if (trackFrame) getViewTreeObserver().addOnPreDrawListener(preDrawListener); }
-  @Override protected void onDetachedFromWindow() { getViewTreeObserver().removeOnPreDrawListener(preDrawListener); super.onDetachedFromWindow(); }
-  @Override protected void onLayout(boolean changed, int left, int top, int right, int bottom) { super.onLayout(changed, left, top, right, bottom); emitFrame(); }
-  private boolean emitFrame() { if (getWidth() <= 0 || getHeight() <= 0 || !(getContext() instanceof ReactContext)) return true; getLocationInWindow(location); int x = location[0], y = location[1]; View ancestor = findAncestor(); if (ancestor != null) { int[] ancestorLocation = new int[2]; ancestor.getLocationInWindow(ancestorLocation); x -= ancestorLocation[0]; y -= ancestorLocation[1]; } if (x == lastX && y == lastY && getWidth() == lastWidth && getHeight() == lastHeight) return true; long now = SystemClock.uptimeMillis(); if (throttleMs > 0 && now - lastEmissionTime < throttleMs) return true; lastX = x; lastY = y; lastWidth = getWidth(); lastHeight = getHeight(); lastEmissionTime = now; WritableMap event = Arguments.createMap(); event.putDouble("x", x); event.putDouble("y", y); event.putDouble("width", lastWidth); event.putDouble("height", lastHeight); ((ReactContext) getContext()).getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "topFrame", event); return true; }
-  private View findAncestor() { if (ancestorTag < 0) return null; View current = this; while (current.getParent() instanceof View) { current = (View) current.getParent(); if (current.getId() == ancestorTag) return current; } return null; }
-  public static class Manager extends SimpleViewManager<EpicSharedElementView> { @Override public String getName() { return "EpicSharedElementView"; } @Override protected EpicSharedElementView createViewInstance(ThemedReactContext context) { return new EpicSharedElementView(context); } @com.facebook.react.uimanager.annotations.ReactProp(name = "throttle", defaultFloat = 0f) public void setThrottle(EpicSharedElementView view, float value) { view.setThrottle(value); } @com.facebook.react.uimanager.annotations.ReactProp(name = "trackFrame", defaultBoolean = false) public void setTrackFrame(EpicSharedElementView view, boolean value) { view.setTrackFrame(value); } @com.facebook.react.uimanager.annotations.ReactProp(name = "ancestorTag", defaultInt = -1) public void setAncestorTag(EpicSharedElementView view, int value) { view.setAncestorTag(value); } @Override public java.util.Map<String, Object> getExportedCustomDirectEventTypeConstants() { return java.util.Collections.singletonMap("topFrame", java.util.Collections.singletonMap("registrationName", "onFrame")); } }
+  private boolean preDrawListenerAttached;
+
+  public EpicSharedElementView(Context context) {
+    super(context);
+  }
+
+  public void setThrottle(float value) {
+    throttleMs = Math.max(0L, (long) value);
+  }
+
+  public void setTrackFrame(boolean value) {
+    trackFrame = value;
+    resetLastFrame();
+    updatePreDrawListener();
+  }
+
+  public void setAncestorTag(int value) {
+    ancestorTag = value;
+    resetLastFrame();
+    updatePreDrawListener();
+  }
+
+  @Override
+  protected void onAttachedToWindow() {
+    super.onAttachedToWindow();
+    updatePreDrawListener();
+  }
+
+  @Override
+  protected void onDetachedFromWindow() {
+    removePreDrawListener();
+    super.onDetachedFromWindow();
+  }
+
+  @Override
+  protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+    setMeasuredDimension(
+        MeasureSpec.getSize(widthMeasureSpec),
+        MeasureSpec.getSize(heightMeasureSpec)
+    );
+  }
+
+  private boolean emitFrame() {
+    boolean emitted = emitFrame(getWidth(), getHeight());
+
+    if (!trackFrame && lastX != UNSET_COORDINATE) {
+      removePreDrawListener();
+    }
+
+    return emitted;
+  }
+
+  private boolean emitFrame(int width, int height) {
+    if (width <= 0 || height <= 0 || !(getContext() instanceof ReactContext)) {
+      return true;
+    }
+
+    getLocationInWindow(location);
+    View ancestor = findAncestor();
+
+    if (ancestor != null) {
+      ancestor.getLocationInWindow(ancestorLocation);
+      location[0] -= ancestorLocation[0];
+      location[1] -= ancestorLocation[1];
+    }
+
+    float density = getResources().getDisplayMetrics().density;
+    int x = Math.round(location[0] / density);
+    int y = Math.round(location[1] / density);
+    int widthDp = Math.round(width / density);
+    int heightDp = Math.round(height / density);
+
+    if (x == lastX && y == lastY && widthDp == lastWidth && heightDp == lastHeight) {
+      return true;
+    }
+
+    long now = SystemClock.uptimeMillis();
+    if (throttleMs > 0
+        && lastEmissionTime != Long.MIN_VALUE
+        && now - lastEmissionTime < throttleMs) {
+      return true;
+    }
+
+    lastX = x;
+    lastY = y;
+    lastWidth = widthDp;
+    lastHeight = heightDp;
+    lastEmissionTime = now;
+
+    WritableMap event = Arguments.createMap();
+    event.putDouble("x", x);
+    event.putDouble("y", y);
+    event.putDouble("width", widthDp);
+    event.putDouble("height", heightDp);
+
+    ((ReactContext) getContext())
+        .getJSModule(RCTEventEmitter.class)
+        .receiveEvent(getId(), "topFrame", event);
+
+    return true;
+  }
+
+  private View findAncestor() {
+    if (ancestorTag == NO_ANCESTOR || !(getContext() instanceof ReactContext)) {
+      return null;
+    }
+
+    ReactContext reactContext = (ReactContext) getContext();
+    UIManager uiManager = UIManagerHelper.getUIManagerForReactTag(reactContext, ancestorTag);
+
+    if (uiManager != null) {
+      View ancestor = uiManager.resolveView(ancestorTag);
+      if (ancestor != null) {
+        return ancestor;
+      }
+    }
+
+    View current = this;
+    while (current.getParent() instanceof View) {
+      current = (View) current.getParent();
+      if (current.getId() == ancestorTag) {
+        return current;
+      }
+    }
+
+    return null;
+  }
+
+  private void resetLastFrame() {
+    lastX = UNSET_COORDINATE;
+    lastY = UNSET_COORDINATE;
+    lastWidth = 0;
+    lastHeight = 0;
+    lastEmissionTime = Long.MIN_VALUE;
+  }
+
+  private void updatePreDrawListener() {
+    if (!isAttachedToWindow()) {
+      return;
+    }
+
+    if (trackFrame || lastX == UNSET_COORDINATE) {
+      addPreDrawListener();
+    } else {
+      removePreDrawListener();
+    }
+  }
+
+  private void addPreDrawListener() {
+    if (!preDrawListenerAttached) {
+      getViewTreeObserver().addOnPreDrawListener(preDrawListener);
+      preDrawListenerAttached = true;
+    }
+  }
+
+  private void removePreDrawListener() {
+    if (preDrawListenerAttached) {
+      getViewTreeObserver().removeOnPreDrawListener(preDrawListener);
+      preDrawListenerAttached = false;
+    }
+  }
+
+  public static class Manager extends ViewGroupManager<EpicSharedElementView> {
+    @Override
+    public String getName() {
+      return "EpicSharedElementView";
+    }
+
+    @Override
+    protected EpicSharedElementView createViewInstance(ThemedReactContext context) {
+      return new EpicSharedElementView(context);
+    }
+
+    @com.facebook.react.uimanager.annotations.ReactProp(name = "throttle", defaultFloat = 0f)
+    public void setThrottle(EpicSharedElementView view, float value) {
+      view.setThrottle(value);
+    }
+
+    @com.facebook.react.uimanager.annotations.ReactProp(name = "trackFrame", defaultBoolean = false)
+    public void setTrackFrame(EpicSharedElementView view, boolean value) {
+      view.setTrackFrame(value);
+    }
+
+    @com.facebook.react.uimanager.annotations.ReactProp(name = "ancestorTag", defaultInt = -1)
+    public void setAncestorTag(EpicSharedElementView view, int value) {
+      view.setAncestorTag(value);
+    }
+
+    @Override
+    public Map<String, Object> getExportedCustomDirectEventTypeConstants() {
+      return Collections.singletonMap(
+          "topFrame",
+          Collections.singletonMap("registrationName", "onFrame")
+      );
+    }
+  }
 }
