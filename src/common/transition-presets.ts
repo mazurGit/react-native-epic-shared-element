@@ -3,9 +3,13 @@ import type {
   SharedElementTransitionDecoration,
 } from './types';
 
-const linear: SharedElementTransitionConfig = () => {
+const linear: SharedElementTransitionConfig = ({ progress, start, end }) => {
   'worklet';
-  return undefined;
+
+  return {
+    left: start.x + (end.x - start.x) * progress,
+    top: start.y + (end.y - start.y) * progress,
+  };
 };
 
 const spiral: SharedElementTransitionConfig = ({ progress, start, end }) => {

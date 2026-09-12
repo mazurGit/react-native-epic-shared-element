@@ -5,33 +5,10 @@ import {
 } from 'react-native-reanimated';
 import type {
   SharedElementRect,
-  SharedElementTransitionDecoration,
   SharedElementTransitionConfig,
 } from '../common/types';
 
 const zoomProgressBounds = [0.05, 0.95];
-
-function getLinearGeometry(
-  progress: number,
-  start: SharedElementRect,
-  end: SharedElementRect
-) {
-  'worklet';
-  return {
-    left: interpolate(progress, [0, 1], [start.x, end.x]),
-    top: interpolate(progress, [0, 1], [start.y, end.y]),
-  };
-}
-
-function getDecoration(
-  transition: SharedElementTransitionConfig,
-  progress: number,
-  start: SharedElementRect,
-  end: SharedElementRect
-): SharedElementTransitionDecoration | undefined {
-  'worklet';
-  return transition({ progress, start, end });
-}
 
 export function useSharedElementTransitionStyle(
   progress: SharedValue<number>,
@@ -49,10 +26,13 @@ export function useSharedElementTransitionStyle(
 
     const value = progress.value;
     const decoration =
-      getDecoration(transition, value, startRect, endRect) ?? {};
+      transition({
+        progress: value,
+        start: startRect,
+        end: endRect,
+      }) ?? {};
     const opacity = interpolate(value, [0, 0.001, 0.999, 1], [0, 1, 1, 0]);
 
-    const geometry = getLinearGeometry(value, startRect, endRect);
     const size =
       mode === 'zoom'
         ? {
@@ -80,7 +60,6 @@ export function useSharedElementTransitionStyle(
 
     return {
       opacity,
-      ...geometry,
       ...decoration,
       ...size,
       ...(transform ? { transform } : {}),

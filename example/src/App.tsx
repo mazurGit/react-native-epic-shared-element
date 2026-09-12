@@ -59,7 +59,7 @@ export default function App() {
           endId="demo-artwork-detail"
           progress={progress}
           mode="zoom"
-          transition={sharedElementTransitionPresets.linear}
+          transition={sharedElementTransitionPresets.spiral}
         />
       </SharedElementHost>
     </SharedElementProvider>

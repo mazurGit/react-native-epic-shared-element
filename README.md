@@ -57,6 +57,7 @@ Custom presets receive the current progress and both measured frames. They may r
   transition={({ progress: t, start, end }) => {
     'worklet';
     return {
+      left: start.x + (end.x - start.x) * t,
       top: start.y + (end.y - start.y) * t - Math.sin(t * Math.PI) * 24,
       transform: [{ rotate: `${t * Math.PI}rad` }],
     };
