@@ -11,8 +11,10 @@ import { useSharedElementResizeStyle } from '../hooks/use-shared-element-resize-
 import { useSharedElementZoomStyle } from '../hooks/use-shared-element-zoom-style';
 import type { SharedElementTransitionProps } from '../common/types';
 
-const sourceFadeStart = 0.01;
-const sharedElementMotionStart = 0.015;
+const fadeStart = 0.01;
+const fadeEnd = 0.015;
+const destinationFadeStart = 1 - fadeEnd;
+const destinationFadeEnd = 1 - fadeStart;
 
 export function SharedElementTransition(
   props: PropsWithChildren<SharedElementTransitionProps>
@@ -51,14 +53,14 @@ export function SharedElementTransitionView({
       if (startNode?.visibility)
         startNode.visibility.value = interpolate(
           value,
-          [0, sourceFadeStart, sharedElementMotionStart],
+          [0, fadeStart, fadeEnd],
           [1, 1, 0],
           Extrapolation.CLAMP
         );
       if (endNode?.visibility)
         endNode.visibility.value = interpolate(
           value,
-          [0, 0.96, 0.965],
+          [0, destinationFadeStart, destinationFadeEnd],
           [0, 0, 1],
           Extrapolation.CLAMP
         );
