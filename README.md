@@ -32,6 +32,7 @@ export function Screen() {
           endId="cover-large"
           progress={progress}
           mode="zoom"
+          preset="linear"
         />
         <SharedElement id="cover-large">
           <Image source={cover} style={styles.largeCover} />
@@ -42,7 +43,27 @@ export function Screen() {
 }
 ```
 
-`progress` is a Reanimated `SharedValue<number>` in the range `0..1`. Use `mode="resize"` for direct frame interpolation or `mode="zoom"` for scale-based motion. Set `clip={false}` to disable clipping.
+`progress` is a Reanimated `SharedValue<number>` in the range `0..1`. `mode` controls the base size behavior: `resize` interpolates the frame from A to B, while `zoom` keeps the source frame and scales it. `preset` controls the transition decoration independently; built-in presets are `linear` and `spiral`.
+
+Custom presets receive the current progress and both measured frames. They may return `opacity`, `transform`, `left`, or `top`; width and height remain controlled by `mode`:
+
+```tsx
+<SharedElementTransition
+  startId="cover-small"
+  endId="cover-large"
+  progress={progress}
+  mode="resize"
+  preset={({ progress: t, start, end }) => {
+    'worklet';
+    return {
+      top: start.y + (end.y - start.y) * t - Math.sin(t * Math.PI) * 24,
+      transform: [{ rotate: `${t * Math.PI}rad` }],
+    };
+  }}
+/>
+```
+
+Set `clip={false}` to disable clipping.
 
 `SharedElementHost` defines the coordinate space. The native view measures each element relative to that host on iOS and Android. Enable `trackFrame` when an element moves during a transition; `throttle` controls measurement frequency in milliseconds.
 

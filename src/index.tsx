@@ -7,5 +7,11 @@ export { SharedElement } from './components/shared-element';
 export { SharedElementTransition } from './components/shared-element-transition';
 export type { SharedElementHostProps } from './components/shared-element-host';
 export type { SharedElementProps } from './components/shared-element';
-export type { SharedElementTransitionProps } from './common/types';
-export type { SharedElementNode, SharedElementRect } from './common/types';
+export type {
+  SharedElementNode,
+  SharedElementRect,
+  SharedElementTransitionDecoration,
+  SharedElementTransitionPreset,
+  SharedElementTransitionPresetContext,
+  SharedElementTransitionProps,
+} from './common/types';

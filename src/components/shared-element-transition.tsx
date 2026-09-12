@@ -7,8 +7,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { useSharedElementRegistry } from '../hooks/use-shared-element-registry';
-import { useSharedElementResizeStyle } from '../hooks/use-shared-element-resize-style';
-import { useSharedElementZoomStyle } from '../hooks/use-shared-element-zoom-style';
+import { useSharedElementTransitionStyle } from '../hooks/use-shared-element-transition-style';
 import type { SharedElementTransitionProps } from '../common/types';
 
 const fadeStart = 0.01;
@@ -27,22 +26,19 @@ export function SharedElementTransitionView({
   endId,
   children,
   clip = true,
+  preset = 'linear',
   mode = 'zoom',
   progress,
 }: SharedElementTransitionProps & { progress: SharedValue<number> }) {
   const { get, getElement, revision } = useSharedElementRegistry();
   const startNode = get(startId);
   const endNode = get(endId);
-  const resizeStyle = useSharedElementResizeStyle(
+  const animatedStyle = useSharedElementTransitionStyle(
     progress,
     startNode?.rect,
     endNode?.rect,
-    revision
-  );
-  const zoomStyle = useSharedElementZoomStyle(
-    progress,
-    startNode?.rect,
-    endNode?.rect,
+    preset,
+    mode,
     revision
   );
   const transitionElement = children ?? getElement(startId) ?? null;
@@ -71,11 +67,7 @@ export function SharedElementTransitionView({
   return (
     <Animated.View
       pointerEvents="none"
-      style={[
-        styles.element,
-        clip && styles.clipped,
-        mode === 'zoom' ? zoomStyle : resizeStyle,
-      ]}
+      style={[styles.element, clip && styles.clipped, animatedStyle]}
     >
       {transitionElement}
     </Animated.View>

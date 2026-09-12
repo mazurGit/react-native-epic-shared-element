@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+import type { ViewStyle } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 
 export interface SharedElementRect {
@@ -20,5 +21,27 @@ export interface SharedElementTransitionProps {
   progress: SharedValue<number>;
   children?: ReactElement;
   clip?: boolean;
+  preset?: SharedElementTransitionPreset;
   mode?: 'resize' | 'zoom';
 }
+
+export interface SharedElementTransitionPresetContext {
+  progress: number;
+  start: SharedElementRect;
+  end: SharedElementRect;
+}
+
+export type SharedElementTransitionDecoration = Pick<
+  ViewStyle,
+  'opacity' | 'transform' | 'transformOrigin'
+> & {
+  left?: number;
+  top?: number;
+};
+
+export type SharedElementTransitionPreset =
+  | 'linear'
+  | 'spiral'
+  | ((
+      context: SharedElementTransitionPresetContext
+    ) => SharedElementTransitionDecoration | undefined);

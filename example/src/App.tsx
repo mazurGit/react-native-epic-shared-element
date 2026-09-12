@@ -58,6 +58,7 @@ export default function App() {
           endId="demo-artwork-detail"
           progress={progress}
           mode="zoom"
+          preset="linear"
         />
       </SharedElementHost>
     </SharedElementProvider>
