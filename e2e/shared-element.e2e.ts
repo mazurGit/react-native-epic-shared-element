@@ -9,16 +9,17 @@ describe('shared element example', () => {
     await device.launchApp({ newInstance: true });
   });
 
-  it('renders the initial source state', async () => {
-    await expect(element(by.text('One element, two layouts.'))).toBeVisible();
-    await expect(element(by.text('Expand artwork'))).toBeVisible();
+  it('renders the gallery grid', async () => {
+    await expect(element(by.text('Shared moments'))).toBeVisible();
     await expect(element(by.text('Aurora'))).toBeVisible();
+    await expect(element(by.id('card-aurora'))).toBeVisible();
   });
 
-  it('expands and resets the shared element', async () => {
+  it('opens the detail and closes it again', async () => {
+    // --- Open the detail overlay ---
     await device.disableSynchronization();
-    await element(by.text('Expand artwork')).tap();
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await element(by.id('card-aurora')).tap();
+    await new Promise((resolve) => setTimeout(resolve, 350));
     const midTransitionScreenshot = await device.takeScreenshot(
       'shared-element-mid-transition'
     );
@@ -30,10 +31,21 @@ describe('shared element example', () => {
     copyFileSync(midTransitionScreenshot, screenshotPath);
     console.log(`Mid-transition screenshot: ${midTransitionScreenshot}`);
     await device.enableSynchronization();
-    await expect(element(by.text('Reset transition'))).toBeVisible();
-    await expect(element(by.id('destination-artwork'))).toBeVisible();
 
-    await element(by.text('Reset transition')).tap();
-    await expect(element(by.text('Expand artwork'))).toBeVisible();
+    // The hero has landed — detail sheet is fully visible.
+    await expect(element(by.id('destination-artwork'))).toBeVisible();
+    await expect(element(by.text('Mila Anders'))).toBeVisible();
+
+    // --- Close the detail overlay ---
+    // Disable sync so Detox does not hang on the Reanimated close animation
+    // or the runOnJS unmount that fires from the withTiming callback.
+    await device.disableSynchronization();
+    await element(by.id('close-detail')).tap();
+    // Wait for the close animation (~620ms) plus the unmount to settle.
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    await device.enableSynchronization();
+
+    // The grid should be visible again with the Aurora card.
+    await expect(element(by.id('card-aurora'))).toBeVisible();
   });
 });

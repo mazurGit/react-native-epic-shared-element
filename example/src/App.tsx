@@ -1,6 +1,22 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSharedValue, withTiming } from 'react-native-reanimated';
+import { useCallback, useState } from 'react';
+import {
+  Dimensions,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import {
   SharedElement,
   SharedElementHost,
@@ -9,117 +25,405 @@ import {
   sharedElementTransitionPresets,
 } from 'react-native-epic-shared-element';
 
+/* ------------------------------------------------------------------ */
+/*  Data                                                              */
+/* ------------------------------------------------------------------ */
+
+type Palette = {
+  bg: string;
+  glow: string;
+  orb: string;
+  text: string;
+  caption: string;
+};
+
+type TransitionPresetName = keyof typeof sharedElementTransitionPresets;
+
+type Artwork = {
+  id: string;
+  letter: string;
+  title: string;
+  artist: string;
+  year: string;
+  medium: string;
+  description: string;
+  palette: Palette;
+  transition: TransitionPresetName;
+};
+
+const ARTWORKS: Artwork[] = [
+  {
+    id: 'aurora',
+    letter: 'A',
+    title: 'Aurora',
+    artist: 'Mila Anders',
+    year: '2024',
+    medium: 'Digital study',
+    description:
+      'A luminous gradient field exploring the boundary between noise and form — where colour bends light into shape.',
+    transition: 'linear',
+    palette: {
+      bg: '#7B5DDB',
+      glow: '#A38AF2',
+      orb: '#E0B5FF',
+      text: '#F7F2FF',
+      caption: '#E9E0FF',
+    },
+  },
+  {
+    id: 'ember',
+    letter: 'E',
+    title: 'Ember',
+    artist: 'Kai Renvi',
+    year: '2023',
+    medium: 'Generative print',
+    description:
+      'Warm decay rendered as geometry — each ember a fragment of a larger, fading constellation.',
+    transition: 'spiral',
+    palette: {
+      bg: '#E0623A',
+      glow: '#FF8A5C',
+      orb: '#FFD18A',
+      text: '#FFF5EE',
+      caption: '#FFE0CC',
+    },
+  },
+  {
+    id: 'tide',
+    letter: 'T',
+    title: 'Tide',
+    artist: 'Noor Halevi',
+    year: '2024',
+    medium: 'Algorithmic painting',
+    description:
+      'Flow fields collapse into standing waves. The tide is not water but the rhythm of its own making.',
+    transition: 'slingshot',
+    palette: {
+      bg: '#2E8BA8',
+      glow: '#5BC4D6',
+      orb: '#B4F0E8',
+      text: '#F0FDFF',
+      caption: '#D0F4FA',
+    },
+  },
+  {
+    id: 'meadow',
+    letter: 'M',
+    title: 'Meadow',
+    artist: 'Iris Lund',
+    year: '2022',
+    medium: 'Mixed digital media',
+    description:
+      'A field of recursive leaves, each generated from the shadow of the one before it.',
+    transition: 'arc',
+    palette: {
+      bg: '#4CA85C',
+      glow: '#86E08A',
+      orb: '#D4F8A8',
+      text: '#F4FFF0',
+      caption: '#DCF8CE',
+    },
+  },
+  {
+    id: 'sunset',
+    letter: 'S',
+    title: 'Sunset',
+    artist: 'Theo Marchetti',
+    year: '2024',
+    medium: 'Realtime shader',
+    description:
+      'A horizon that never quite sets — colour suspended in the moment between day and the memory of day.',
+    transition: 'swoosh',
+    palette: {
+      bg: '#D64A7C',
+      glow: '#FF7BA8',
+      orb: '#FFC2D8',
+      text: '#FFF0F5',
+      caption: '#FFDDE8',
+    },
+  },
+  {
+    id: 'frost',
+    letter: 'F',
+    title: 'Frost',
+    artist: 'Lena Okabe',
+    year: '2023',
+    medium: 'Vector composition',
+    description:
+      'Crystalline structures grown from a single seed vector, branching until the frame fills with quiet.',
+    transition: 'portalWarp',
+    palette: {
+      bg: '#5A86C2',
+      glow: '#8FBEF0',
+      orb: '#DCEFFF',
+      text: '#F4FAFF',
+      caption: '#D6ECFF',
+    },
+  },
+];
+
+/* ------------------------------------------------------------------ */
+/*  Layout constants                                                  */
+/* ------------------------------------------------------------------ */
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const GUTTER = 14;
+const COLUMNS = 2;
+const CARD_WIDTH = (SCREEN_WIDTH - 48 - GUTTER * (COLUMNS - 1)) / COLUMNS;
+const DURATION = 620;
+
+/* ------------------------------------------------------------------ */
+/*  App                                                               */
+/* ------------------------------------------------------------------ */
+
 export default function App() {
-  const [expanded, setExpanded] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detailReady, setDetailReady] = useState(false);
   const progress = useSharedValue(0);
-  const toggle = () => {
-    const next = !expanded;
-    setExpanded(next);
-    progress.value = withTiming(next ? 1 : 0, { duration: 650 });
-  };
+
+  const selected = ARTWORKS.find((a) => a.id === selectedId) ?? null;
+
+  const open = useCallback(
+    (id: string) => {
+      // Mount the destination SharedElement first, then start the transition
+      // after two animation frames so the native onFrame measurement is ready.
+      setSelectedId(id);
+      setDetailReady(false);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          progress.value = withTiming(1, { duration: DURATION }, (finished) => {
+            if (finished) runOnJS(setDetailReady)(true);
+          });
+        });
+      });
+    },
+    [progress]
+  );
+
+  const close = useCallback(() => {
+    setDetailReady(false);
+    progress.value = withTiming(0, { duration: DURATION }, (finished) => {
+      if (finished) {
+        runOnJS(setSelectedId)(null);
+      }
+    });
+  }, [progress]);
+
+  // Backdrop dims the grid as the hero flies forward.
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+  }));
+
+  // The detail sheet materialises as the hero arrives.
+  const sheetStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.5, 1], [0, 1], Extrapolation.CLAMP),
+  }));
+
+  // Body content slides up after the sheet is visible.
+  const contentStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      progress.value,
+      [0.65, 1],
+      [0, 1],
+      Extrapolation.CLAMP
+    ),
+    transform: [
+      {
+        translateY: interpolate(
+          progress.value,
+          [0.65, 1],
+          [28, 0],
+          Extrapolation.CLAMP
+        ),
+      },
+    ],
+  }));
+
   return (
     <SharedElementProvider>
       <SharedElementHost style={styles.host}>
-        <View style={styles.content}>
+        {/* ----------------------- Gallery grid ----------------------- */}
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.header}>
             <View>
-              <Text style={styles.eyebrow}>EPIC / PLAYGROUND</Text>
+              <Text style={styles.eyebrow}>EPIC / GALLERY</Text>
               <Text style={styles.title}>Shared moments</Text>
             </View>
-            <View style={styles.livePill}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveText}>LIVE</Text>
+            <View style={styles.badge}>
+              <View style={styles.badgeDot} />
+              <Text style={styles.badgeText}>{ARTWORKS.length} WORKS</Text>
             </View>
           </View>
           <Text style={styles.subtitle}>
-            One element, two layouts — measured natively and animated with
-            Reanimated.
+            Tap any work to see its hero fly from the grid to the detail view —
+            measured natively, animated with Reanimated.
           </Text>
-          <View style={styles.stage}>
-            <View style={styles.sourceCard}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.label}>COLLECTION / 01</Text>
-                <Text style={styles.cardIndex}>01—04</Text>
-              </View>
-              <SharedElement id="demo-artwork">
-                <View style={[styles.artwork, styles.sourceArtwork]}>
-                  <View style={styles.artworkGlow} />
-                  <View style={styles.artworkOrb} />
-                  <Text style={styles.artworkLetter}>A</Text>
-                  <Text style={styles.artworkCaption}>AURORA</Text>
-                </View>
-              </SharedElement>
-              <View style={styles.sourceFooter}>
-                <View>
-                  <Text style={styles.detailTitle}>Aurora</Text>
-                  <Text style={styles.detailSubtitle}>
-                    No. 01 / Digital study
-                  </Text>
-                </View>
-                <Text style={styles.arrow}>↗</Text>
-              </View>
-            </View>
 
-            <View style={styles.destinationSection}>
-              <View style={styles.sectionLine} />
-              <Text style={styles.label}>DETAIL VIEW</Text>
-            </View>
-            <SharedElement id="demo-artwork-detail">
-              <View
-                testID="destination-artwork"
-                style={[styles.artwork, styles.destinationArtwork]}
+          <View style={styles.grid}>
+            {ARTWORKS.map((artwork) => (
+              <Pressable
+                key={artwork.id}
+                testID={`card-${artwork.id}`}
+                style={({ pressed }) => [
+                  styles.card,
+                  pressed && styles.cardPressed,
+                ]}
+                onPress={() => open(artwork.id)}
               >
-                <View style={styles.artworkGlow} />
-                <View style={styles.artworkOrb} />
-                <Text style={styles.artworkLetter}>A</Text>
-                <Text style={styles.artworkCaption}>AURORA / 01</Text>
-              </View>
-            </SharedElement>
-            <View style={styles.detailMeta}>
-              <View>
-                <Text style={styles.metaLabel}>ARTIST</Text>
-                <Text style={styles.metaValue}>Mila Anders</Text>
-              </View>
-              <View>
-                <Text style={styles.metaLabel}>FORMAT</Text>
-                <Text style={styles.metaValue}>Digital / 2024</Text>
-              </View>
-              <Text style={styles.metaArrow}>↗</Text>
-            </View>
+                <SharedElement id={`art-${artwork.id}`}>
+                  <Hero artwork={artwork} size="card" />
+                </SharedElement>
+                <View style={styles.cardMeta}>
+                  <View style={styles.cardMetaRow}>
+                    <Text style={styles.cardTitle}>{artwork.title}</Text>
+                    <Text style={styles.cardPreset}>{artwork.transition}</Text>
+                  </View>
+                  <Text style={styles.cardArtist}>{artwork.artist}</Text>
+                </View>
+              </Pressable>
+            ))}
           </View>
+          <View style={styles.footer} />
+        </ScrollView>
+
+        {/* ----------------------- Detail overlay ----------------------- */}
+        {selected && (
+          <Animated.View style={[styles.overlay, backdropStyle]}>
+            <Pressable
+              style={styles.backdrop}
+              onPress={close}
+              accessibilityLabel="Close detail"
+            />
+            <Animated.View style={[styles.sheet, sheetStyle]}>
+              <SharedElement id={`art-${selected.id}-detail`}>
+                <Hero
+                  artwork={selected}
+                  size="detail"
+                  testID="destination-artwork"
+                />
+              </SharedElement>
+
+              <ScrollView
+                style={styles.detailScroll}
+                contentContainerStyle={styles.detailScrollContent}
+                showsVerticalScrollIndicator={false}
+              >
+                <Animated.View style={contentStyle}>
+                  <View style={styles.detailHeader}>
+                    <Text style={styles.detailTitle}>{selected.title}</Text>
+                    <Text style={styles.detailSubtitle}>
+                      {selected.artist} · {selected.year}
+                    </Text>
+                  </View>
+
+                  <View style={styles.metaRow}>
+                    <View style={styles.metaCell}>
+                      <Text style={styles.metaLabel}>MEDIUM</Text>
+                      <Text style={styles.metaValue}>{selected.medium}</Text>
+                    </View>
+                    <View style={styles.metaCell}>
+                      <Text style={styles.metaLabel}>YEAR</Text>
+                      <Text style={styles.metaValue}>{selected.year}</Text>
+                    </View>
+                    <View style={styles.metaCell}>
+                      <Text style={styles.metaLabel}>EDITION</Text>
+                      <Text style={styles.metaValue}>01 / 01</Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.detailDescription}>
+                    {selected.description}
+                  </Text>
+                </Animated.View>
+              </ScrollView>
+            </Animated.View>
+          </Animated.View>
+        )}
+
+        {/* ------------- The flying clone (on top of everything) ------------- */}
+        {selected && (
+          <SharedElementTransition
+            startId={`art-${selected.id}`}
+            endId={`art-${selected.id}-detail`}
+            progress={progress}
+            mode="resize"
+            transition={sharedElementTransitionPresets[selected.transition]}
+          />
+        )}
+        {selected && detailReady && (
           <Pressable
-            accessibilityRole="button"
-            style={({ pressed }) => [
-              styles.button,
-              pressed && styles.buttonPressed,
-            ]}
-            onPress={toggle}
+            testID="close-detail"
+            style={styles.closeButtonFloating}
+            onPress={close}
+            accessibilityLabel="Close"
+            hitSlop={12}
           >
-            <View style={styles.buttonIcon}>
-              <Text style={styles.buttonIconText}>{expanded ? '↙' : '↗'}</Text>
-            </View>
-            <Text style={styles.buttonText}>
-              {expanded ? 'Reset transition' : 'Expand artwork'}
-            </Text>
-            <Text style={styles.buttonHint}>TAP TO TRANSITION</Text>
+            <Text style={styles.closeIcon}>✕</Text>
           </Pressable>
-        </View>
-        <SharedElementTransition
-          startId="demo-artwork"
-          endId="demo-artwork-detail"
-          progress={progress}
-          mode="zoom"
-          transition={sharedElementTransitionPresets.linear}
-          clip
-        />
+        )}
       </SharedElementHost>
     </SharedElementProvider>
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  Hero — the shared visual used in both card and detail             */
+/* ------------------------------------------------------------------ */
+
+type HeroSize = 'card' | 'detail';
+
+type HeroProps = {
+  artwork: Artwork;
+  size: HeroSize;
+  testID?: string;
+  style?: StyleProp<ViewStyle>;
+};
+
+function Hero({ artwork, size, testID, style }: HeroProps) {
+  const p = artwork.palette;
+  return (
+    <View
+      testID={testID}
+      style={[
+        styles.hero,
+        { backgroundColor: p.bg },
+        size === 'card' && styles.heroCard,
+        size === 'detail' && styles.heroDetail,
+        style,
+      ]}
+    >
+      <View style={[styles.heroGlow, { backgroundColor: p.glow }]} />
+      <View style={[styles.heroOrb, { backgroundColor: p.orb }]} />
+      <Text style={[styles.heroLetter, { color: p.text }]}>
+        {artwork.letter}
+      </Text>
+      <Text style={[styles.heroCaption, { color: p.caption }]}>
+        {artwork.title.toUpperCase()}
+      </Text>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Styles                                                            */
+/* ------------------------------------------------------------------ */
+
 const styles = StyleSheet.create({
-  host: { flex: 1, backgroundColor: '#0D0D12' },
-  content: { flex: 1, padding: 24, paddingTop: 64 },
+  host: {
+    flex: 1,
+    backgroundColor: '#0D0D12',
+  },
+
+  /* ---- Gallery ---- */
+  scroll: { flex: 1 },
+  scrollContent: {
+    padding: 24,
+    paddingTop: 60,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -132,13 +436,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   title: {
-    color: '#FFF',
+    color: '#FFFFFF',
     fontSize: 30,
     lineHeight: 36,
     fontWeight: '800',
     marginTop: 8,
   },
-  livePill: {
+  badge: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
@@ -147,159 +451,199 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 7,
   },
-  liveDot: {
+  badgeDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
     backgroundColor: '#B9F18C',
     marginRight: 6,
   },
-  liveText: {
+  badgeText: {
     color: '#B9F18C',
     fontSize: 9,
     letterSpacing: 1.2,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   subtitle: {
-    color: '#8E899B',
-    fontSize: 14,
-    lineHeight: 20,
+    color: '#8A8492',
+    fontSize: 13,
+    lineHeight: 19,
     marginTop: 14,
-    maxWidth: 310,
+    marginBottom: 28,
   },
-  stage: { flex: 1, marginTop: 28 },
-  sourceCard: {
-    backgroundColor: '#17151E',
-    borderRadius: 24,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#26232F',
-  },
-  cardHeader: {
+  grid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 14,
+    flexWrap: 'wrap',
+    gap: GUTTER,
   },
-  cardIndex: {
-    color: '#5E596A',
-    fontSize: 10,
-    letterSpacing: 1,
-    fontWeight: '700',
+  card: {
+    width: CARD_WIDTH,
   },
-  label: {
-    color: '#777185',
-    fontSize: 9,
-    letterSpacing: 1.4,
-    fontWeight: '700',
+  cardPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.97 }],
   },
-  artwork: {
-    borderRadius: 20,
+  cardMeta: {
+    paddingTop: 12,
+  },
+  cardMetaRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#7B5DDB',
+    justifyContent: 'space-between',
+  },
+  cardTitle: {
+    color: '#F7F4FF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  cardArtist: {
+    color: '#777185',
+    fontSize: 11,
+    marginTop: 3,
+  },
+  cardPreset: {
+    color: '#7568A4',
+    fontSize: 9,
+    letterSpacing: 0.8,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  footer: { height: 60 },
+
+  /* ---- Detail overlay ---- */
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(8, 7, 12, 0.9)',
+  },
+  sheet: {
+    flex: 1,
+    marginTop: 56,
+    backgroundColor: '#131119',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     overflow: 'hidden',
   },
-  sourceArtwork: { width: '100%', height: 190 },
-  destinationArtwork: { width: '100%', height: 260 },
-  artworkGlow: {
+  closeButtonFloating: {
     position: 'absolute',
-    width: 210,
-    height: 210,
-    borderRadius: 105,
-    backgroundColor: '#A38AF2',
-    opacity: 0.42,
-    top: -80,
-    right: -36,
-  },
-  artworkOrb: {
-    position: 'absolute',
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    backgroundColor: '#E0B5FF',
-    opacity: 0.28,
-    bottom: -48,
-    left: -22,
-  },
-  artworkLetter: {
-    color: '#F7F2FF',
-    fontSize: 82,
-    lineHeight: 92,
-    fontWeight: '900',
-    fontStyle: 'italic',
-    textShadowColor: '#4A358F',
-    textShadowOffset: { width: 0, height: 7 },
-    textShadowRadius: 12,
-  },
-  artworkCaption: {
-    position: 'absolute',
+    top: 72,
     right: 16,
-    bottom: 14,
-    color: '#E9E0FF',
-    fontSize: 9,
-    letterSpacing: 2,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(35, 31, 46, 0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 20,
+  },
+  closeIcon: {
+    color: '#EDE7FF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  detailScroll: { flex: 1 },
+  detailScrollContent: {
+    padding: 24,
+    paddingBottom: 48,
+  },
+  detailHeader: {
+    flexDirection: 'column',
+  },
+  detailTitle: {
+    color: '#FFFFFF',
+    fontSize: 28,
     fontWeight: '800',
   },
-  sourceFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 16,
+  detailSubtitle: {
+    color: '#A99AE8',
+    fontSize: 13,
+    marginTop: 6,
   },
-  detailTitle: { color: '#F7F4FF', fontSize: 22, fontWeight: '800' },
-  detailSubtitle: { color: '#777185', fontSize: 12, marginTop: 5 },
-  arrow: { color: '#A99AE8', fontSize: 27, fontWeight: '300' },
-  destinationSection: {
+  metaRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    gap: 18,
     marginTop: 22,
-    marginBottom: 10,
+    paddingBottom: 22,
+    borderBottomWidth: 1,
+    borderBottomColor: '#231F2E',
   },
-  sectionLine: {
-    height: 1,
-    width: 24,
-    backgroundColor: '#A99AE8',
-    marginRight: 9,
-  },
-  detailMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 14,
-  },
+  metaCell: { flex: 1 },
   metaLabel: {
     color: '#625D6D',
-    fontSize: 8,
+    fontSize: 9,
     letterSpacing: 1.2,
     fontWeight: '800',
   },
-  metaValue: { color: '#BEB8C9', fontSize: 11, marginTop: 5 },
-  metaArrow: { color: '#5E596A', fontSize: 22 },
-  button: {
-    backgroundColor: '#B7A6F2',
-    borderRadius: 18,
-    minHeight: 62,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 18,
+  metaValue: {
+    color: '#BEB8C9',
+    fontSize: 13,
+    marginTop: 5,
+    fontWeight: '600',
   },
-  buttonPressed: { opacity: 0.78, transform: [{ scale: 0.985 }] },
-  buttonIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#2A213A',
+  detailDescription: {
+    color: '#D7D2E0',
+    fontSize: 15,
+    lineHeight: 23,
+    marginTop: 22,
+  },
+
+  /* ---- Hero ---- */
+  hero: {
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    overflow: 'hidden',
   },
-  buttonIconText: { color: '#EDE7FF', fontSize: 19 },
-  buttonText: { color: '#241C32', fontSize: 15, fontWeight: '800', flex: 1 },
-  buttonHint: {
-    color: '#665587',
-    fontSize: 8,
-    letterSpacing: 1,
+  heroCard: {
+    width: '100%',
+    height: CARD_WIDTH,
+  },
+  heroDetail: {
+    width: '100%',
+    height: 300,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  heroGlow: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    opacity: 0.4,
+    top: -70,
+    right: -30,
+  },
+  heroOrb: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    opacity: 0.28,
+    bottom: -42,
+    left: -20,
+  },
+  heroLetter: {
+    fontSize: 72,
+    lineHeight: 80,
+    fontWeight: '900',
+    fontStyle: 'italic',
+  },
+  heroCaption: {
+    position: 'absolute',
+    right: 14,
+    bottom: 12,
+    fontSize: 9,
+    letterSpacing: 2,
     fontWeight: '800',
   },
 });
