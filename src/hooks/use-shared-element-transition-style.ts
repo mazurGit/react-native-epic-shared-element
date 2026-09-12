@@ -3,6 +3,7 @@ import {
   useAnimatedStyle,
   type SharedValue,
 } from 'react-native-reanimated';
+import type { ViewStyle } from 'react-native';
 import type {
   SharedElementRect,
   SharedElementTransitionConfig,
@@ -56,13 +57,16 @@ export function useSharedElementTransitionStyle(
               [startRect.height, endRect.height]
             ),
           };
-    const transform = decoration.transform ?? size.transform;
+    const transform = [
+      ...(size.transform ?? []),
+      ...(decoration.transform ?? []),
+    ] as ViewStyle['transform'];
 
     return {
       opacity,
       ...decoration,
       ...size,
-      ...(transform ? { transform } : {}),
+      transform,
     };
   }, [mode, revision, transition]);
 }
