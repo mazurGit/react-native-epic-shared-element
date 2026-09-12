@@ -26,6 +26,7 @@ export function SharedElementTransitionView({
   startId,
   endId,
   children,
+  element,
   clip = true,
   transition = sharedElementTransitionPresets.linear,
   mode = 'zoom',
@@ -42,7 +43,7 @@ export function SharedElementTransitionView({
     mode,
     revision
   );
-  const transitionElement = children ?? getElement(startId) ?? null;
+  const transitionElement = element ?? children ?? getElement(startId) ?? null;
 
   useAnimatedReaction(
     () => ({ value: progress.value }),

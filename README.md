@@ -67,6 +67,17 @@ Custom presets receive the current progress and both measured frames. They may r
 
 Set `clip={false}` to disable clipping.
 
+You can provide a custom transition element directly with `element` (or use it as the component child):
+
+```tsx
+<SharedElementTransition
+  startId="cover-small"
+  endId="cover-large"
+  progress={progress}
+  element={<Image source={cover} style={styles.smallCover} />}
+/>
+```
+
 `SharedElementHost` defines the coordinate space. The native view measures each element relative to that host on iOS and Android. Enable `trackFrame` when an element moves during a transition; `throttle` controls measurement frequency in milliseconds.
 
 ## API

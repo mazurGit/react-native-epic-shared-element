@@ -20,6 +20,7 @@ export interface SharedElementTransitionProps {
   endId: string;
   progress: SharedValue<number>;
   children?: ReactElement;
+  element?: ReactElement;
   clip?: boolean;
   transition?: SharedElementTransitionConfig;
   mode?: 'resize' | 'zoom';
