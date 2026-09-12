@@ -1,7 +1,7 @@
 {
   "name": "react-native-epic-shared-element",
   "version": "0.1.0",
-  "description": "Smooth shared element transitions and animations",
+  "description": "Native shared-element measurements and Reanimated transitions for React Native.",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
   "exports": {
@@ -83,6 +83,8 @@
     "react": "19.2.3",
     "react-native": "0.86.2",
     "react-native-builder-bob": "^0.43.0",
+    "react-native-reanimated": "4.5.1",
+    "react-native-worklets": "0.10.1",
     "react-native-web": "~0.21.2",
     "release-it": "^21.0.1",
     "turbo": "^2.10.8",
@@ -90,7 +92,9 @@
   },
   "peerDependencies": {
     "react": "*",
-    "react-native": "*"
+    "react-native": "*",
+    "react-native-reanimated": ">=3.16.0",
+    "react-native-worklets": ">=0.5.0"
   },
   "workspaces": [
     "example"
@@ -113,14 +117,6 @@
         }
       ]
     ]
-  },
-  "codegenConfig": {
-    "name": "EpicSharedElementSpec",
-    "type": "modules",
-    "jsSrcsDir": "src",
-    "android": {
-      "javaPackageName": "com.epicsharedelement"
-    }
   },
   "prettier": {
     "quoteProps": "consistent",
