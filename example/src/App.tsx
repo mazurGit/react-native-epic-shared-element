@@ -39,7 +39,10 @@ export default function App() {
             </View>
             <Text style={styles.label}>DESTINATION</Text>
             <SharedElement id="demo-artwork-detail">
-              <View style={[styles.artwork, styles.destinationArtwork]}>
+              <View
+                testID="destination-artwork"
+                style={[styles.artwork, styles.destinationArtwork]}
+              >
                 <Text style={styles.artworkText}>A</Text>
               </View>
             </SharedElement>
