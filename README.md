@@ -44,7 +44,7 @@ export function Screen() {
 }
 ```
 
-`progress` is a Reanimated `SharedValue<number>` in the range `0..1`. `mode` controls the base size behavior: `resize` interpolates the frame from A to B, while `zoom` keeps the source frame and scales it. `transition` is a callback configuration; built-in configurations are available as `sharedElementTransitionPresets.linear` and `sharedElementTransitionPresets.spiral`.
+`progress` is a Reanimated `SharedValue<number>` in the range `0..1`. `mode` controls the base size behavior: `resize` interpolates the frame from A to B, while `zoom` keeps the source frame and scales it to match both the destination width and height. `transition` is a callback configuration; built-in configurations are available as `sharedElementTransitionPresets.linear` and `sharedElementTransitionPresets.spiral`.
 
 Custom presets receive the current progress and both measured frames. They may return `opacity`, `transform`, `left`, or `top`; width and height remain controlled by `mode`:
 

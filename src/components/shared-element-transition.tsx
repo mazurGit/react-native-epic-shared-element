@@ -1,5 +1,5 @@
-import { type PropsWithChildren } from 'react';
-import { StyleSheet } from 'react-native';
+import { cloneElement, type PropsWithChildren, type ReactElement } from 'react';
+import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -15,6 +15,8 @@ const fadeStart = 0.01;
 const fadeEnd = 0.015;
 const destinationFadeStart = 1 - fadeEnd;
 const destinationFadeEnd = 1 - fadeStart;
+
+type TransitionElementProps = { style?: StyleProp<ViewStyle> };
 
 export function SharedElementTransition(
   props: PropsWithChildren<SharedElementTransitionProps>
@@ -43,7 +45,15 @@ export function SharedElementTransitionView({
     mode,
     revision
   );
-  const transitionElement = element ?? children ?? getElement(startId) ?? null;
+  const transitionElement = (element ??
+    children ??
+    getElement(startId) ??
+    null) as ReactElement<TransitionElementProps> | null;
+  const renderedTransitionElement = transitionElement
+    ? cloneElement(transitionElement, {
+        style: [transitionElement.props.style, styles.transitionElement],
+      })
+    : null;
 
   useAnimatedReaction(
     () => ({ value: progress.value }),
@@ -71,7 +81,7 @@ export function SharedElementTransitionView({
       pointerEvents="none"
       style={[styles.element, clip && styles.clipped, animatedStyle]}
     >
-      {transitionElement}
+      {renderedTransitionElement}
     </Animated.View>
   );
 }
@@ -79,4 +89,5 @@ export function SharedElementTransitionView({
 const styles = StyleSheet.create({
   element: { position: 'absolute' },
   clipped: { overflow: 'hidden' },
+  transitionElement: { width: '100%', height: '100%' },
 });

@@ -42,7 +42,13 @@ export function useSharedElementTransitionStyle(
             transformOrigin: 'top left' as const,
             transform: [
               {
-                scale: interpolate(value, zoomProgressBounds, [
+                scaleX: interpolate(value, zoomProgressBounds, [
+                  1,
+                  endRect.width / startRect.width,
+                ]),
+              },
+              {
+                scaleY: interpolate(value, zoomProgressBounds, [
                   1,
                   endRect.height / startRect.height,
                 ]),
