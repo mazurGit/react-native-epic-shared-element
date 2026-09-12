@@ -40,9 +40,7 @@
     "test": "jest",
     "e2e:ios": "detox build --configuration ios.sim.debug && detox test --configuration ios.sim.debug",
     "e2e:android": "detox build --configuration android.emu.debug && detox test --configuration android.emu.debug",
-    "release": "release-it --only-version",
-    "web": "vite",
-    "build:web": "vite build"
+    "release": "release-it --only-version"
   },
   "keywords": [
     "react-native",
@@ -87,7 +85,6 @@
     "react-native": "0.86.2",
     "react-native-builder-bob": "^0.43.0",
     "react-native-reanimated": "4.5.1",
-    "react-native-web": "~0.21.2",
     "react-native-worklets": "0.10.1",
     "release-it": "^21.0.1",
     "turbo": "^2.10.8",
@@ -173,8 +170,7 @@
       "eslint",
       "jest",
       "lefthook",
-      "release-it",
-      "vite"
+      "release-it"
     ],
     "version": "0.63.1"
   }
