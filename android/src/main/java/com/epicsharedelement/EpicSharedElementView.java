@@ -31,6 +31,7 @@ public class EpicSharedElementView extends ReactViewGroup {
   private int lastWidth;
   private int lastHeight;
   private int ancestorTag = NO_ANCESTOR;
+  private float borderRadius = -1f;
   private long throttleMs;
   private long lastEmissionTime = Long.MIN_VALUE;
   private boolean trackFrame;
@@ -42,6 +43,12 @@ public class EpicSharedElementView extends ReactViewGroup {
 
   public void setThrottle(float value) {
     throttleMs = Math.max(0L, (long) value);
+  }
+
+  public void setSharedElementBorderRadius(float value) {
+    borderRadius = value;
+    resetLastFrame();
+    updatePreDrawListener();
   }
 
   public void setTrackFrame(boolean value) {
@@ -128,6 +135,9 @@ public class EpicSharedElementView extends ReactViewGroup {
     event.putDouble("y", y);
     event.putDouble("width", widthDp);
     event.putDouble("height", heightDp);
+    if (borderRadius >= 0f) {
+      event.putDouble("borderRadius", borderRadius);
+    }
 
     ((ReactContext) getContext())
         .getJSModule(RCTEventEmitter.class)
@@ -210,6 +220,11 @@ public class EpicSharedElementView extends ReactViewGroup {
     @com.facebook.react.uimanager.annotations.ReactProp(name = "throttle", defaultFloat = 0f)
     public void setThrottle(EpicSharedElementView view, float value) {
       view.setThrottle(value);
+    }
+
+    @com.facebook.react.uimanager.annotations.ReactProp(name = "borderRadius", defaultFloat = -1f)
+    public void setBorderRadius(EpicSharedElementView view, float value) {
+      view.setSharedElementBorderRadius(value);
     }
 
     @com.facebook.react.uimanager.annotations.ReactProp(name = "trackFrame", defaultBoolean = false)

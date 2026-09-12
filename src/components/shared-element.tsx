@@ -1,11 +1,17 @@
 import {
+  useCallback,
   useContext,
   useEffect,
   useRef,
   type PropsWithChildren,
   type ReactElement,
 } from 'react';
-import { type StyleProp, type ViewProps, type ViewStyle } from 'react-native';
+import {
+  type NativeSyntheticEvent,
+  type StyleProp,
+  type ViewProps,
+  type ViewStyle,
+} from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -17,6 +23,7 @@ import type { SharedElementNode, SharedElementRect } from '../common/types';
 
 export interface SharedElementProps {
   id: string;
+  borderRadius?: number;
   throttle?: number;
   trackFrame?: boolean;
   pointerEvents?: ViewProps['pointerEvents'];
@@ -32,6 +39,7 @@ export function SharedElement({
 
 export function SharedElementView({
   id,
+  borderRadius,
   throttle = 16,
   trackFrame = false,
   pointerEvents,
@@ -62,18 +70,24 @@ export function SharedElementView({
     if (node) updateElement(node, children);
   }, [children, updateElement]);
 
+  const handleFrame = useCallback(
+    (event: NativeSyntheticEvent<SharedElementRect>) => {
+      const node = nodeRef.current;
+      if (node) updateRect(node, event.nativeEvent);
+    },
+    [updateRect]
+  );
+
   return (
     <AnimatedNativeSharedElement
       collapsable={false}
       pointerEvents={pointerEvents}
       ancestorTag={ancestorTag ?? undefined}
+      borderRadius={borderRadius}
       throttle={throttle}
       trackFrame={trackFrame}
       style={[visibilityStyle, style]}
-      onFrame={(event) => {
-        const node = nodeRef.current;
-        if (node) updateRect(node, event.nativeEvent);
-      }}
+      onFrame={handleFrame}
     >
       {children}
     </AnimatedNativeSharedElement>

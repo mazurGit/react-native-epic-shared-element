@@ -49,6 +49,8 @@ type Artwork = {
   description: string;
   palette: Palette;
   transition: TransitionPresetName;
+  cardRadius: number;
+  detailRadius: number;
 };
 
 const ARTWORKS: Artwork[] = [
@@ -62,6 +64,8 @@ const ARTWORKS: Artwork[] = [
     description:
       'A luminous gradient field exploring the boundary between noise and form — where colour bends light into shape.',
     transition: 'linear',
+    cardRadius: 20,
+    detailRadius: 8,
     palette: {
       bg: '#7B5DDB',
       glow: '#A38AF2',
@@ -80,6 +84,8 @@ const ARTWORKS: Artwork[] = [
     description:
       'Warm decay rendered as geometry — each ember a fragment of a larger, fading constellation.',
     transition: 'spiral',
+    cardRadius: 8,
+    detailRadius: 28,
     palette: {
       bg: '#E0623A',
       glow: '#FF8A5C',
@@ -98,6 +104,8 @@ const ARTWORKS: Artwork[] = [
     description:
       'Flow fields collapse into standing waves. The tide is not water but the rhythm of its own making.',
     transition: 'slingshot',
+    cardRadius: 28,
+    detailRadius: 12,
     palette: {
       bg: '#2E8BA8',
       glow: '#5BC4D6',
@@ -116,6 +124,8 @@ const ARTWORKS: Artwork[] = [
     description:
       'A field of recursive leaves, each generated from the shadow of the one before it.',
     transition: 'arc',
+    cardRadius: 12,
+    detailRadius: 36,
     palette: {
       bg: '#4CA85C',
       glow: '#86E08A',
@@ -134,6 +144,8 @@ const ARTWORKS: Artwork[] = [
     description:
       'A horizon that never quite sets — colour suspended in the moment between day and the memory of day.',
     transition: 'swoosh',
+    cardRadius: 36,
+    detailRadius: 6,
     palette: {
       bg: '#D64A7C',
       glow: '#FF7BA8',
@@ -152,6 +164,8 @@ const ARTWORKS: Artwork[] = [
     description:
       'Crystalline structures grown from a single seed vector, branching until the frame fills with quiet.',
     transition: 'portalWarp',
+    cardRadius: 6,
+    detailRadius: 24,
     palette: {
       bg: '#5A86C2',
       glow: '#8FBEF0',
@@ -274,8 +288,15 @@ export default function App() {
                 ]}
                 onPress={() => open(artwork.id)}
               >
-                <SharedElement id={`art-${artwork.id}`}>
-                  <Hero artwork={artwork} size="card" />
+                <SharedElement
+                  id={`art-${artwork.id}`}
+                  borderRadius={artwork.cardRadius}
+                >
+                  <Hero
+                    artwork={artwork}
+                    size="card"
+                    radius={artwork.cardRadius}
+                  />
                 </SharedElement>
                 <View style={styles.cardMeta}>
                   <View style={styles.cardMetaRow}>
@@ -298,11 +319,24 @@ export default function App() {
               onPress={close}
               accessibilityLabel="Close detail"
             />
-            <Animated.View style={[styles.sheet, sheetStyle]}>
-              <SharedElement id={`art-${selected.id}-detail`}>
+            <Animated.View
+              style={[
+                styles.sheet,
+                {
+                  borderTopLeftRadius: selected.detailRadius,
+                  borderTopRightRadius: selected.detailRadius,
+                },
+                sheetStyle,
+              ]}
+            >
+              <SharedElement
+                id={`art-${selected.id}-detail`}
+                borderRadius={selected.detailRadius}
+              >
                 <Hero
                   artwork={selected}
                   size="detail"
+                  radius={selected.detailRadius}
                   testID="destination-artwork"
                 />
               </SharedElement>
@@ -379,11 +413,12 @@ type HeroSize = 'card' | 'detail';
 type HeroProps = {
   artwork: Artwork;
   size: HeroSize;
+  radius: number;
   testID?: string;
   style?: StyleProp<ViewStyle>;
 };
 
-function Hero({ artwork, size, testID, style }: HeroProps) {
+function Hero({ artwork, size, radius, testID, style }: HeroProps) {
   const p = artwork.palette;
   return (
     <View
@@ -391,6 +426,7 @@ function Hero({ artwork, size, testID, style }: HeroProps) {
       style={[
         styles.hero,
         { backgroundColor: p.bg },
+        { borderRadius: radius },
         size === 'card' && styles.heroCard,
         size === 'detail' && styles.heroDetail,
         style,
@@ -611,8 +647,6 @@ const styles = StyleSheet.create({
   heroDetail: {
     width: '100%',
     height: 300,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
   },
   heroGlow: {
     position: 'absolute',

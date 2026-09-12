@@ -76,6 +76,17 @@ export function useSharedElementTransitionStyle(
               [startRect.height, endRect.height]
             ),
           };
+
+    const radius =
+      startRect.borderRadius !== undefined && endRect.borderRadius !== undefined
+        ? {
+            borderRadius: interpolate(
+              motionProgress,
+              [0, 1],
+              [startRect.borderRadius, endRect.borderRadius]
+            ),
+          }
+        : {};
     const transform = [
       ...(size.transform ?? []),
       ...(decoration.transform ?? []),
@@ -85,6 +96,7 @@ export function useSharedElementTransitionStyle(
       opacity,
       ...decoration,
       ...size,
+      ...radius,
       transform,
     };
   }, [mode, revision, transition]);

@@ -89,5 +89,11 @@ export function SharedElementTransitionView({
 const styles = StyleSheet.create({
   element: { position: 'absolute' },
   clipped: { overflow: 'hidden' },
-  transitionElement: { width: '100%', height: '100%' },
+  transitionElement: {
+    width: '100%',
+    height: '100%',
+    // The animated wrapper owns the interpolated radius. Keeping the source
+    // element's radius here would prevent transitions to a larger radius.
+    borderRadius: 0,
+  },
 });

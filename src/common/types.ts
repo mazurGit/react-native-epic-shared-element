@@ -7,6 +7,7 @@ export interface SharedElementRect {
   y: number;
   width: number;
   height: number;
+  borderRadius?: number;
 }
 
 export interface SharedElementNode {
