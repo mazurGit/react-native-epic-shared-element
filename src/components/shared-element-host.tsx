@@ -1,9 +1,10 @@
 import {
   forwardRef,
-  useCallback,
+  useImperativeHandle,
   useLayoutEffect,
   useRef,
   useState,
+  type ComponentRef,
   type PropsWithChildren,
 } from 'react';
 import {
@@ -21,28 +22,24 @@ export interface SharedElementHostProps extends ViewProps {
 }
 
 export const SharedElementHost = forwardRef<
-  View,
+  ComponentRef<typeof View>,
   PropsWithChildren<SharedElementHostProps>
 >(({ children, style, ...viewProps }, forwardedRef) => {
-  const hostRef = useRef<View>(null);
+  const hostRef = useRef<ComponentRef<typeof View>>(null);
   const [hostTag, setHostTag] = useState<number | null>(null);
   useLayoutEffect(() => {
     const tag = findNodeHandle(hostRef.current);
-    if (tag !== null) setHostTag(tag);
+    if (tag != null) setHostTag(tag);
   }, []);
-  const handleHostRef = useCallback(
-    (node: View | null) => {
-      hostRef.current = node;
-      if (typeof forwardedRef === 'function') forwardedRef(node);
-      else if (forwardedRef) forwardedRef.current = node;
-    },
-    [forwardedRef]
+  useImperativeHandle(
+    forwardedRef,
+    () => hostRef.current as ComponentRef<typeof View>
   );
 
   return (
     <SharedElementHostContext.Provider value={hostTag}>
       <View
-        ref={handleHostRef}
+        ref={hostRef}
         style={[StyleSheet.absoluteFill, style]}
         {...viewProps}
       >
