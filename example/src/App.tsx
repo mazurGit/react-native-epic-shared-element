@@ -6,6 +6,7 @@ import {
   SharedElementHost,
   SharedElementProvider,
   SharedElementTransition,
+  sharedElementTransitionPresets,
 } from 'react-native-epic-shared-element';
 
 export default function App() {
@@ -58,7 +59,7 @@ export default function App() {
           endId="demo-artwork-detail"
           progress={progress}
           mode="zoom"
-          preset="linear"
+          transition={sharedElementTransitionPresets.linear}
         />
       </SharedElementHost>
     </SharedElementProvider>

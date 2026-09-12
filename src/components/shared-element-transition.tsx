@@ -9,6 +9,7 @@ import Animated, {
 import { useSharedElementRegistry } from '../hooks/use-shared-element-registry';
 import { useSharedElementTransitionStyle } from '../hooks/use-shared-element-transition-style';
 import type { SharedElementTransitionProps } from '../common/types';
+import { sharedElementTransitionPresets } from '../common/transition-presets';
 
 const fadeStart = 0.01;
 const fadeEnd = 0.015;
@@ -26,7 +27,7 @@ export function SharedElementTransitionView({
   endId,
   children,
   clip = true,
-  preset = 'linear',
+  transition = sharedElementTransitionPresets.linear,
   mode = 'zoom',
   progress,
 }: SharedElementTransitionProps & { progress: SharedValue<number> }) {
@@ -37,7 +38,7 @@ export function SharedElementTransitionView({
     progress,
     startNode?.rect,
     endNode?.rect,
-    preset,
+    transition,
     mode,
     revision
   );

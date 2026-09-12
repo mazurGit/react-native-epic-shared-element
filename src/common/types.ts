@@ -21,7 +21,7 @@ export interface SharedElementTransitionProps {
   progress: SharedValue<number>;
   children?: ReactElement;
   clip?: boolean;
-  preset?: SharedElementTransitionPreset;
+  transition?: SharedElementTransitionConfig;
   mode?: 'resize' | 'zoom';
 }
 
@@ -39,9 +39,6 @@ export type SharedElementTransitionDecoration = Pick<
   top?: number;
 };
 
-export type SharedElementTransitionPreset =
-  | 'linear'
-  | 'spiral'
-  | ((
-      context: SharedElementTransitionPresetContext
-    ) => SharedElementTransitionDecoration | undefined);
+export type SharedElementTransitionConfig = (
+  context: SharedElementTransitionPresetContext
+) => SharedElementTransitionDecoration | undefined;

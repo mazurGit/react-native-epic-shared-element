@@ -16,6 +16,7 @@ import {
   SharedElementHost,
   SharedElementProvider,
   SharedElementTransition,
+  sharedElementTransitionPresets,
 } from 'react-native-epic-shared-element';
 import { useSharedValue } from 'react-native-reanimated';
 
@@ -32,7 +33,7 @@ export function Screen() {
           endId="cover-large"
           progress={progress}
           mode="zoom"
-          preset="linear"
+          transition={sharedElementTransitionPresets.linear}
         />
         <SharedElement id="cover-large">
           <Image source={cover} style={styles.largeCover} />
@@ -43,7 +44,7 @@ export function Screen() {
 }
 ```
 
-`progress` is a Reanimated `SharedValue<number>` in the range `0..1`. `mode` controls the base size behavior: `resize` interpolates the frame from A to B, while `zoom` keeps the source frame and scales it. `preset` controls the transition decoration independently; built-in presets are `linear` and `spiral`.
+`progress` is a Reanimated `SharedValue<number>` in the range `0..1`. `mode` controls the base size behavior: `resize` interpolates the frame from A to B, while `zoom` keeps the source frame and scales it. `transition` is a callback configuration; built-in configurations are available as `sharedElementTransitionPresets.linear` and `sharedElementTransitionPresets.spiral`.
 
 Custom presets receive the current progress and both measured frames. They may return `opacity`, `transform`, `left`, or `top`; width and height remain controlled by `mode`:
 
@@ -53,7 +54,7 @@ Custom presets receive the current progress and both measured frames. They may r
   endId="cover-large"
   progress={progress}
   mode="resize"
-  preset={({ progress: t, start, end }) => {
+  transition={({ progress: t, start, end }) => {
     'worklet';
     return {
       top: start.y + (end.y - start.y) * t - Math.sin(t * Math.PI) * 24,
