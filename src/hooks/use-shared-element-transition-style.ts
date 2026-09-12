@@ -1,4 +1,5 @@
 import {
+  Extrapolation,
   interpolate,
   useAnimatedStyle,
   type SharedValue,
@@ -9,7 +10,7 @@ import type {
   SharedElementTransitionConfig,
 } from '../common/types';
 
-const zoomProgressBounds = [0.05, 0.95];
+const progressBounds = [0.05, 0.95];
 
 export function useSharedElementTransitionStyle(
   progress: SharedValue<number>,
@@ -26,9 +27,15 @@ export function useSharedElementTransitionStyle(
     if (!startRect || !endRect) return { opacity: 0 };
 
     const value = progress.value;
+    const motionProgress = interpolate(
+      value,
+      progressBounds,
+      [0, 1],
+      Extrapolation.CLAMP
+    );
     const decoration =
       transition({
-        progress: value,
+        progress: motionProgress,
         start: startRect,
         end: endRect,
       }) ?? {};
@@ -42,23 +49,29 @@ export function useSharedElementTransitionStyle(
             transformOrigin: 'top left' as const,
             transform: [
               {
-                scaleX: interpolate(value, zoomProgressBounds, [
-                  1,
-                  endRect.width / startRect.width,
-                ]),
+                scaleX: interpolate(
+                  motionProgress,
+                  [0, 1],
+                  [1, endRect.width / startRect.width]
+                ),
               },
               {
-                scaleY: interpolate(value, zoomProgressBounds, [
-                  1,
-                  endRect.height / startRect.height,
-                ]),
+                scaleY: interpolate(
+                  motionProgress,
+                  [0, 1],
+                  [1, endRect.height / startRect.height]
+                ),
               },
             ],
           }
         : {
-            width: interpolate(value, [0, 1], [startRect.width, endRect.width]),
+            width: interpolate(
+              motionProgress,
+              [0, 1],
+              [startRect.width, endRect.width]
+            ),
             height: interpolate(
-              value,
+              motionProgress,
               [0, 1],
               [startRect.height, endRect.height]
             ),

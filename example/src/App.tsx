@@ -22,7 +22,7 @@ import {
   SharedElementHost,
   SharedElementProvider,
   SharedElementTransition,
-  sharedElementTransitionPresets,
+  SharedElementPresets,
 } from 'react-native-epic-shared-element';
 
 /* ------------------------------------------------------------------ */
@@ -37,7 +37,7 @@ type Palette = {
   caption: string;
 };
 
-type TransitionPresetName = keyof typeof sharedElementTransitionPresets;
+type TransitionPresetName = keyof typeof SharedElementPresets;
 
 type Artwork = {
   id: string;
@@ -351,7 +351,7 @@ export default function App() {
             endId={`art-${selected.id}-detail`}
             progress={progress}
             mode="resize"
-            transition={sharedElementTransitionPresets[selected.transition]}
+            transition={SharedElementPresets[selected.transition]}
           />
         )}
         {selected && detailReady && (
@@ -530,8 +530,8 @@ const styles = StyleSheet.create({
     flex: 1,
     marginTop: 56,
     backgroundColor: '#131119',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     overflow: 'hidden',
   },
   closeButtonFloating: {
@@ -540,7 +540,7 @@ const styles = StyleSheet.create({
     right: 16,
     width: 38,
     height: 38,
-    borderRadius: 19,
+    borderRadius: 20,
     backgroundColor: 'rgba(35, 31, 46, 0.85)',
     alignItems: 'center',
     justifyContent: 'center',

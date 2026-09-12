@@ -154,7 +154,7 @@ const portalWarp: SharedElementTransitionConfig = ({
   };
 };
 
-export const sharedElementTransitionPresets = {
+export const SharedElementPresets = {
   linear,
   spiral,
   slingshot,

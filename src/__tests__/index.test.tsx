@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { sharedElementTransitionPresets } from '../common/transition-presets';
+import { SharedElementPresets } from '../common/transition-presets';
 import type { SharedElementTransitionDecoration } from '../common/types';
 
 const start = { x: 10, y: 20, width: 100, height: 120 };
@@ -22,8 +22,8 @@ function expectValidDecoration(
   }
 }
 
-describe('sharedElementTransitionPresets.linear', () => {
-  const transition = sharedElementTransitionPresets.linear;
+describe('SharedElementPresets.linear', () => {
+  const transition = SharedElementPresets.linear;
 
   it('starts at the source frame', () => {
     expect(transition({ progress: 0, start, end })).toEqual({
@@ -58,8 +58,8 @@ describe('sharedElementTransitionPresets.linear', () => {
   });
 });
 
-describe('sharedElementTransitionPresets.spiral', () => {
-  const transition = sharedElementTransitionPresets.spiral;
+describe('SharedElementPresets.spiral', () => {
+  const transition = SharedElementPresets.spiral;
 
   it('anchors to the source at progress 0', () => {
     const atStart = transition({ progress: 0, start, end });
@@ -123,18 +123,18 @@ describe('sharedElementTransitionPresets.spiral', () => {
   });
 });
 
-describe('sharedElementTransitionPresets', () => {
+describe('SharedElementPresets', () => {
   it('exposes both linear and spiral presets', () => {
-    expect(sharedElementTransitionPresets).toHaveProperty('linear');
-    expect(sharedElementTransitionPresets).toHaveProperty('spiral');
-    expect(typeof sharedElementTransitionPresets.linear).toBe('function');
-    expect(typeof sharedElementTransitionPresets.spiral).toBe('function');
+    expect(SharedElementPresets).toHaveProperty('linear');
+    expect(SharedElementPresets).toHaveProperty('spiral');
+    expect(typeof SharedElementPresets.linear).toBe('function');
+    expect(typeof SharedElementPresets.spiral).toBe('function');
   });
 
   it.each(['slingshot', 'arc', 'swoosh', 'portalWarp'] as const)(
     'exposes the %s preset with source and destination anchors',
     (name) => {
-      const transition = sharedElementTransitionPresets[name];
+      const transition = SharedElementPresets[name];
       const atStart = transition({ progress: 0, start, end });
       const atEnd = transition({ progress: 1, start, end });
 
