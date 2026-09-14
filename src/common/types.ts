@@ -10,16 +10,23 @@ export interface SharedElementRect {
   borderRadius?: number;
 }
 
-export interface SharedElementFrame extends SharedElementRect {
-  stable: boolean;
+export interface SharedElementMeasurement extends SharedElementRect {
+  requestId: number;
 }
+
+export interface MeasureStableRectsOptions {
+  signal?: AbortSignal;
+}
+
+export type StableRectSnapshot = ReadonlyMap<string, SharedElementRect>;
 
 export type SharedElementContentType = 'view' | 'text';
 
 export interface SharedElementNode {
   id: string;
   rect: SharedValue<SharedElementRect | null>;
-  stable: boolean;
+  requestMeasurement: (requestId: number) => void;
+  completeMeasurement: (requestId: number) => void;
   visibility: SharedValue<number>;
   contentType?: SharedElementContentType;
 }

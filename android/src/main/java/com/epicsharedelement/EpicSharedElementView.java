@@ -14,6 +14,7 @@ import com.facebook.react.uimanager.events.RCTEventEmitter;
 import com.facebook.react.views.view.ReactViewGroup;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 public class EpicSharedElementView extends ReactViewGroup {
@@ -32,8 +33,9 @@ public class EpicSharedElementView extends ReactViewGroup {
   private int emittedWidth;
   private int emittedHeight;
   private int stableSampleCount;
-  private boolean lastStable;
   private boolean hasEmittedFrame;
+  private int measurementRequestId = -1;
+  private int completedRequestId = -1;
   private int ancestorTag = NO_ANCESTOR;
   private float borderRadius = -1f;
   private long throttleMs;
@@ -63,6 +65,13 @@ public class EpicSharedElementView extends ReactViewGroup {
 
   public void setAncestorTag(int value) {
     ancestorTag = value;
+    resetLastFrame();
+    updatePreDrawListener();
+  }
+
+  public void setMeasurementRequestId(int value) {
+    if (measurementRequestId == value) return;
+    measurementRequestId = value;
     resetLastFrame();
     updatePreDrawListener();
   }
@@ -97,7 +106,8 @@ public class EpicSharedElementView extends ReactViewGroup {
   private boolean emitFrame() {
     boolean emitted = emitFrame(getWidth(), getHeight());
 
-    if (!trackFrame && hasEmittedFrame && lastStable) {
+    if (!trackFrame && hasEmittedFrame
+        && (measurementRequestId < 0 || completedRequestId == measurementRequestId)) {
       removePreDrawListener();
     }
 
@@ -145,42 +155,49 @@ public class EpicSharedElementView extends ReactViewGroup {
       lastHeight = heightDp;
       stableSampleCount = 1;
     }
-    boolean stable = stableSampleCount >= STABLE_SAMPLE_COUNT;
     boolean frameNotEmitted = x != emittedX || y != emittedY
         || widthDp != emittedWidth || heightDp != emittedHeight;
-    boolean shouldEmit = !hasEmittedFrame || frameNotEmitted || stable != lastStable;
-    if (!shouldEmit) return true;
-
     long now = SystemClock.uptimeMillis();
-    if (throttleMs > 0
-        && lastEmissionTime != Long.MIN_VALUE
-        && now - lastEmissionTime < throttleMs) {
-      return true;
+    if ((!hasEmittedFrame || frameNotEmitted)
+        && !(throttleMs > 0
+            && lastEmissionTime != Long.MIN_VALUE
+            && now - lastEmissionTime < throttleMs)) {
+      lastEmissionTime = now;
+      emittedX = x;
+      emittedY = y;
+      emittedWidth = widthDp;
+      emittedHeight = heightDp;
+      hasEmittedFrame = true;
+      emitEvent("topFrame", createRectEvent(x, y, widthDp, heightDp));
     }
 
-    lastEmissionTime = now;
-    emittedX = x;
-    emittedY = y;
-    emittedWidth = widthDp;
-    emittedHeight = heightDp;
-    lastStable = stable;
-    hasEmittedFrame = true;
+    if (stableSampleCount >= STABLE_SAMPLE_COUNT
+        && measurementRequestId >= 0
+        && completedRequestId != measurementRequestId) {
+      WritableMap event = createRectEvent(x, y, widthDp, heightDp);
+      event.putInt("requestId", measurementRequestId);
+      completedRequestId = measurementRequestId;
+      emitEvent("topMeasurementReady", event);
+    }
+    return true;
+  }
 
+  private WritableMap createRectEvent(int x, int y, int width, int height) {
     WritableMap event = Arguments.createMap();
     event.putDouble("x", x);
     event.putDouble("y", y);
-    event.putDouble("width", widthDp);
-    event.putDouble("height", heightDp);
-    event.putBoolean("stable", stable);
+    event.putDouble("width", width);
+    event.putDouble("height", height);
     if (borderRadius >= 0f) {
       event.putDouble("borderRadius", borderRadius);
     }
+    return event;
+  }
 
+  private void emitEvent(String eventName, WritableMap event) {
     ((ReactContext) getContext())
         .getJSModule(RCTEventEmitter.class)
-        .receiveEvent(getId(), "topFrame", event);
-
-    return true;
+        .receiveEvent(getId(), eventName, event);
   }
 
   private View findAncestor() {
@@ -209,7 +226,7 @@ public class EpicSharedElementView extends ReactViewGroup {
     emittedWidth = 0;
     emittedHeight = 0;
     stableSampleCount = 0;
-    lastStable = false;
+    completedRequestId = -1;
     hasEmittedFrame = false;
     lastEmissionTime = Long.MIN_VALUE;
   }
@@ -219,7 +236,8 @@ public class EpicSharedElementView extends ReactViewGroup {
       return;
     }
 
-    if (trackFrame || !hasEmittedFrame || !lastStable) {
+    if (trackFrame || !hasEmittedFrame
+        || (measurementRequestId >= 0 && completedRequestId != measurementRequestId)) {
       addPreDrawListener();
     } else {
       removePreDrawListener();
@@ -271,12 +289,20 @@ public class EpicSharedElementView extends ReactViewGroup {
       view.setAncestorTag(value);
     }
 
+    @com.facebook.react.uimanager.annotations.ReactProp(name = "measurementRequestId", defaultInt = -1)
+    public void setMeasurementRequestId(EpicSharedElementView view, int value) {
+      view.setMeasurementRequestId(value);
+    }
+
     @Override
     public Map<String, Object> getExportedCustomDirectEventTypeConstants() {
-      return Collections.singletonMap(
-          "topFrame",
-          Collections.singletonMap("registrationName", "onFrame")
+      Map<String, Object> events = new HashMap<>();
+      events.put("topFrame", Collections.singletonMap("registrationName", "onFrame"));
+      events.put(
+          "topMeasurementReady",
+          Collections.singletonMap("registrationName", "onMeasurementReady")
       );
+      return events;
     }
   }
 }

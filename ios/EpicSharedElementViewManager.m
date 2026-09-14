@@ -8,8 +8,10 @@
 RCT_EXPORT_MODULE(EpicSharedElementView)
 - (UIView *)view { return [EpicSharedElementView new]; }
 RCT_EXPORT_VIEW_PROPERTY(onFrame, RCTDirectEventBlock)
+RCT_EXPORT_VIEW_PROPERTY(onMeasurementReady, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(throttle, CGFloat)
 RCT_EXPORT_VIEW_PROPERTY(borderRadius, NSNumber)
 RCT_EXPORT_VIEW_PROPERTY(trackFrame, BOOL)
 RCT_EXPORT_VIEW_PROPERTY(ancestorTag, NSNumber)
+RCT_EXPORT_VIEW_PROPERTY(measurementRequestId, NSNumber)
 @end
