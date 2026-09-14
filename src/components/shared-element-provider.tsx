@@ -8,20 +8,10 @@ import {
 } from 'react';
 import type { ReactElement } from 'react';
 import { SharedElementContext } from '../context/shared-element-context';
-import type {
-  MeasureStableRectsOptions,
-  SharedElementNode,
-  SharedElementRect,
-  StableRectSnapshot,
-} from '../common/types';
-import { createStableRectRequest } from '../common/stable-rect-request';
+import type { SharedElementNode, SharedElementRect } from '../common/types';
+import { createInitialRectWaiter } from '../common/initial-rects';
 
 export type SharedElementProviderProps = PropsWithChildren;
-
-type PendingRequest = ReturnType<typeof createStableRectRequest> & {
-  abort: () => void;
-  dispose: () => void;
-};
 
 export function SharedElementProvider({
   children,
@@ -29,75 +19,34 @@ export function SharedElementProvider({
   const [revision, setRevision] = useState(0);
   const nodes = useRef(new Map<string, SharedElementNode>());
   const elements = useRef(new Map<string, ReactElement>());
-  const nextRequestId = useRef(0);
-  const requests = useRef(new Map<number, PendingRequest>());
+  const waiters = useRef(new Set<ReturnType<typeof createInitialRectWaiter>>());
   useEffect(
     () => () => {
-      requests.current.forEach((request) => request.dispose());
-      requests.current.clear();
+      waiters.current.forEach((waiter) => waiter.cancel());
+      waiters.current.clear();
     },
-    []
-  );
-  const measureStableRects = useCallback(
-    (ids: readonly string[], options?: MeasureStableRectsOptions) =>
-      new Promise<StableRectSnapshot>((resolve, reject) => {
-        const uniqueIds = [...new Set(ids)];
-        if (uniqueIds.length === 0) {
-          resolve(new Map());
-          return;
-        }
-        const requestId = ++nextRequestId.current;
-        const rejectAsAborted = () => {
-          options?.signal?.removeEventListener('abort', abort);
-          requests.current.delete(requestId);
-          const error = new Error('Stable rect measurement was aborted');
-          error.name = 'AbortError';
-          reject(error);
-        };
-        const abort = () => {
-          const request = requests.current.get(requestId);
-          request?.cancel();
-          request?.ids.forEach((id) =>
-            nodes.current.get(id)?.completeMeasurement(requestId)
-          );
-          rejectAsAborted();
-        };
-        if (options?.signal?.aborted) {
-          abort();
-          return;
-        }
-        const request = Object.assign(
-          createStableRectRequest(requestId, uniqueIds, (snapshot) => {
-            requests.current.delete(requestId);
-            options?.signal?.removeEventListener('abort', abort);
-            resolve(snapshot);
-          }),
-          {
-            abort,
-            dispose() {
-              requests.current.get(requestId)?.cancel();
-              rejectAsAborted();
-            },
-          }
-        );
-        requests.current.set(requestId, request);
-        options?.signal?.addEventListener('abort', abort, { once: true });
-        uniqueIds.forEach((id) =>
-          nodes.current.get(id)?.requestMeasurement(requestId)
-        );
-      }),
     []
   );
   const waitForStableRects = useCallback(
     (ids: readonly string[], callback: () => void) => {
-      const controller = new AbortController();
-      measureStableRects(ids, { signal: controller.signal }).then(
-        callback,
-        () => {}
+      if (ids.length === 0) {
+        callback();
+        return () => {};
+      }
+      const waiter = createInitialRectWaiter(ids, () => {
+        waiters.current.delete(waiter);
+        callback();
+      });
+      waiters.current.add(waiter);
+      ids.forEach((id) =>
+        waiter.update(id, nodes.current.get(id)?.settled ?? false)
       );
-      return () => controller.abort();
+      return () => {
+        waiter.cancel();
+        waiters.current.delete(waiter);
+      };
     },
-    [measureStableRects]
+    []
   );
 
   const register = useCallback(
@@ -105,9 +54,7 @@ export function SharedElementProvider({
       const existing = nodes.current.get(node.id);
       if (existing && existing !== node) return;
       nodes.current.set(node.id, node);
-      requests.current.forEach((request, requestId) => {
-        if (request.ids.has(node.id)) node.requestMeasurement(requestId);
-      });
+      waiters.current.forEach((waiter) => waiter.update(node.id, node.settled));
       elements.current.set(node.id, element);
       setRevision((value) => value + 1);
     },
@@ -127,17 +74,19 @@ export function SharedElementProvider({
     },
     []
   );
-  const measurementReady = useCallback(
-    (node: SharedElementNode, rect: SharedElementRect, requestId: number) => {
+  const markSettled = useCallback(
+    (node: SharedElementNode, rect: SharedElementRect) => {
       if (nodes.current.get(node.id) !== node) return;
       node.rect.value = rect;
-      requests.current.get(requestId)?.accept(node.id, requestId, rect);
+      node.settled = true;
+      waiters.current.forEach((waiter) => waiter.update(node.id, true));
     },
     []
   );
   const unregister = useCallback((node: SharedElementNode) => {
     if (nodes.current.get(node.id) !== node) return;
     nodes.current.delete(node.id);
+    waiters.current.forEach((waiter) => waiter.update(node.id, false));
     elements.current.delete(node.id);
     setRevision((value) => value + 1);
   }, []);
@@ -149,8 +98,7 @@ export function SharedElementProvider({
       register,
       updateElement,
       updateRect,
-      measurementReady,
-      measureStableRects,
+      markSettled,
       waitForStableRects,
       unregister,
       revision,
@@ -161,8 +109,7 @@ export function SharedElementProvider({
       unregister,
       updateElement,
       updateRect,
-      measurementReady,
-      measureStableRects,
+      markSettled,
       waitForStableRects,
     ]
   );

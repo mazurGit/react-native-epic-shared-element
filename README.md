@@ -127,17 +127,17 @@ native ref is ready, no measurement is emitted; there is no fallback to window
 coordinates. Render the transition overlay at the host's origin. If elements use
 different hosts, their origins and coordinate units must be aligned by the caller.
 
-Use `useSharedElementRegistry().measureStableRects(ids, { signal })` to request
-fresh measurements. Each request gets a unique ID; native views confirm their
-rects over two consecutive display frames and return one atomic snapshot. Stale
-responses from earlier requests are ignored. The promise resolves to a read-only
-map keyed by element ID. `waitForStableRects(ids, callback)` remains available as
-a callback-compatible wrapper and returns a cancellation function.
+`onFrameChange` reports only delivered geometry changes. Its event contains the
+previous and current rect plus `framesDiff`, the number of sampled native display
+frames since the previous delivered change. `onFrameSettled` fires once per native
+view, when its initial rect remains unchanged for two consecutive display frames.
+With `trackFrame={false}`, measurement stops after that initial settle and resumes
+for one sample after a later layout. Use `trackFrame` to follow scrolling or other
+ancestor layout changes continuously.
 
-This API does not drive animations or navigation: the caller owns the progress
-value and decides when to animate. With `trackFrame={false}`, normal frame
-tracking stops after a measurement request completes; use `trackFrame` to follow
-scrolling or other ancestor layout changes continuously.
+`useSharedElementRegistry().waitForStableRects(ids, callback)` remains available
+to coordinate the initial settle of several elements. It returns a cancellation
+function and does not drive animations or navigation.
 
 ### Text content
 

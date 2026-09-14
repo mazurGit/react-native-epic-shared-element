@@ -11,10 +11,10 @@ export type { SharedElementHostProps } from './components/shared-element-host';
 export type { SharedElementProps } from './components/shared-element';
 export type {
   SharedElementContentType,
-  MeasureStableRectsOptions,
+  SharedElementFrameChangeEvent,
   SharedElementNode,
   SharedElementRect,
-  StableRectSnapshot,
+  SharedElementSettledEvent,
   SharedElementTransitionDecoration,
   SharedElementTransitionConfig,
   SharedElementTransitionPresetContext,

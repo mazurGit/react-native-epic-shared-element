@@ -4,7 +4,6 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
-  useState,
   type PropsWithChildren,
   type ReactElement,
 } from 'react';
@@ -23,9 +22,10 @@ import { useSharedElementRegistry } from '../hooks/use-shared-element-registry';
 import { NativeSharedElement } from '../native/epic-shared-element';
 import type {
   SharedElementContentType,
-  SharedElementMeasurement,
+  SharedElementFrameChangeEvent,
   SharedElementNode,
   SharedElementRect,
+  SharedElementSettledEvent,
 } from '../common/types';
 
 export interface SharedElementProps {
@@ -34,6 +34,8 @@ export interface SharedElementProps {
   borderRadius?: number;
   throttle?: number;
   trackFrame?: boolean;
+  onFrameChange?: (event: SharedElementFrameChangeEvent) => void;
+  onFrameSettled?: (event: SharedElementSettledEvent) => void;
   pointerEvents?: ViewProps['pointerEvents'];
   style?: StyleProp<ViewStyle>;
 }
@@ -51,11 +53,13 @@ export function SharedElementView({
   borderRadius,
   throttle = 16,
   trackFrame = false,
+  onFrameChange,
+  onFrameSettled,
   pointerEvents,
   style,
   children,
 }: PropsWithChildren<SharedElementProps & { children: ReactElement }>) {
-  const { register, updateElement, updateRect, measurementReady, unregister } =
+  const { register, updateElement, updateRect, markSettled, unregister } =
     useSharedElementRegistry();
   const ancestorTag = useContext(SharedElementHostContext);
   if (ancestorTag === undefined) {
@@ -64,33 +68,6 @@ export function SharedElementView({
     );
   }
   const rect = useSharedValue<SharedElementRect | null>(null);
-  const [measurementRequestId, setMeasurementRequestId] = useState(-1);
-  const activeMeasurementRequestId = useRef(-1);
-  const measurementQueue = useRef<number[]>([]);
-  const requestMeasurement = useCallback((requestId: number) => {
-    if (
-      activeMeasurementRequestId.current === requestId ||
-      measurementQueue.current.includes(requestId)
-    )
-      return;
-    if (activeMeasurementRequestId.current < 0) {
-      activeMeasurementRequestId.current = requestId;
-      setMeasurementRequestId(requestId);
-    } else {
-      measurementQueue.current.push(requestId);
-    }
-  }, []);
-  const completeMeasurement = useCallback((requestId: number) => {
-    if (activeMeasurementRequestId.current !== requestId) {
-      measurementQueue.current = measurementQueue.current.filter(
-        (queuedRequestId) => queuedRequestId !== requestId
-      );
-      return;
-    }
-    const nextRequestId = measurementQueue.current.shift() ?? -1;
-    activeMeasurementRequestId.current = nextRequestId;
-    setMeasurementRequestId(nextRequestId);
-  }, []);
   const visibility = useSharedValue(1);
   const nodeRef = useRef<SharedElementNode | null>(null);
   const visibilityStyle = useAnimatedStyle(() => ({
@@ -101,8 +78,7 @@ export function SharedElementView({
     const node: SharedElementNode = {
       id,
       rect,
-      requestMeasurement,
-      completeMeasurement,
+      settled: false,
       visibility,
       contentType,
     };
@@ -112,38 +88,27 @@ export function SharedElementView({
       if (nodeRef.current === node) nodeRef.current = null;
       unregister(node);
     };
-  }, [
-    children,
-    completeMeasurement,
-    contentType,
-    id,
-    rect,
-    register,
-    requestMeasurement,
-    unregister,
-    visibility,
-  ]);
+  }, [children, contentType, id, rect, register, unregister, visibility]);
   useEffect(() => {
     const node = nodeRef.current;
     if (node) updateElement(node, children);
   }, [children, updateElement]);
 
   const handleFrame = useCallback(
-    (event: NativeSyntheticEvent<SharedElementRect>) => {
+    (event: NativeSyntheticEvent<SharedElementFrameChangeEvent>) => {
       const node = nodeRef.current;
-      if (node) updateRect(node, event.nativeEvent);
+      if (node) updateRect(node, event.nativeEvent.current);
+      onFrameChange?.(event.nativeEvent);
     },
-    [updateRect]
+    [onFrameChange, updateRect]
   );
-  const handleMeasurementReady = useCallback(
-    (event: NativeSyntheticEvent<SharedElementMeasurement>) => {
+  const handleFrameSettled = useCallback(
+    (event: NativeSyntheticEvent<SharedElementSettledEvent>) => {
       const node = nodeRef.current;
-      if (!node) return;
-      const { requestId, ...measuredRect } = event.nativeEvent;
-      measurementReady(node, measuredRect, requestId);
-      node.completeMeasurement(requestId);
+      if (node) markSettled(node, event.nativeEvent.current);
+      onFrameSettled?.(event.nativeEvent);
     },
-    [measurementReady]
+    [markSettled, onFrameSettled]
   );
 
   return (
@@ -154,10 +119,9 @@ export function SharedElementView({
       borderRadius={borderRadius}
       throttle={throttle}
       trackFrame={trackFrame}
-      measurementRequestId={measurementRequestId}
       style={[visibilityStyle, style]}
-      onFrame={handleFrame}
-      onMeasurementReady={handleMeasurementReady}
+      onFrameChange={handleFrame}
+      onFrameSettled={handleFrameSettled}
     >
       {children}
     </AnimatedNativeSharedElement>

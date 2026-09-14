@@ -4,8 +4,8 @@ import {
   type ViewProps,
 } from 'react-native';
 import type {
-  SharedElementMeasurement,
-  SharedElementRect,
+  SharedElementFrameChangeEvent,
+  SharedElementSettledEvent,
 } from '../common/types';
 
 export interface NativeSharedElementProps extends ViewProps {
@@ -13,10 +13,11 @@ export interface NativeSharedElementProps extends ViewProps {
   borderRadius?: number;
   throttle?: number;
   trackFrame?: boolean;
-  measurementRequestId?: number;
-  onFrame?: (event: NativeSyntheticEvent<SharedElementRect>) => void;
-  onMeasurementReady?: (
-    event: NativeSyntheticEvent<SharedElementMeasurement>
+  onFrameChange?: (
+    event: NativeSyntheticEvent<SharedElementFrameChangeEvent>
+  ) => void;
+  onFrameSettled?: (
+    event: NativeSyntheticEvent<SharedElementSettledEvent>
   ) => void;
 }
 

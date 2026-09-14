@@ -1,10 +1,5 @@
 import { createContext, type ReactElement } from 'react';
-import type {
-  MeasureStableRectsOptions,
-  SharedElementNode,
-  SharedElementRect,
-  StableRectSnapshot,
-} from '../common/types';
+import type { SharedElementNode, SharedElementRect } from '../common/types';
 
 export interface SharedElementRegistryValue {
   get: (id: string) => SharedElementNode | undefined;
@@ -12,16 +7,8 @@ export interface SharedElementRegistryValue {
   register: (node: SharedElementNode, element: ReactElement) => void;
   updateElement: (node: SharedElementNode, element: ReactElement) => void;
   updateRect: (node: SharedElementNode, rect: SharedElementRect) => void;
-  measurementReady: (
-    node: SharedElementNode,
-    rect: SharedElementRect,
-    requestId: number
-  ) => void;
+  markSettled: (node: SharedElementNode, rect: SharedElementRect) => void;
   unregister: (node: SharedElementNode) => void;
-  measureStableRects: (
-    ids: readonly string[],
-    options?: MeasureStableRectsOptions
-  ) => Promise<StableRectSnapshot>;
   waitForStableRects: (
     ids: readonly string[],
     callback: () => void
