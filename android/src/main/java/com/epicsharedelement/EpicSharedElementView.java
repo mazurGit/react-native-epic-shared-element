@@ -7,10 +7,8 @@ import android.view.ViewTreeObserver;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactContext;
-import com.facebook.react.bridge.UIManager;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.uimanager.ThemedReactContext;
-import com.facebook.react.uimanager.UIManagerHelper;
 import com.facebook.react.uimanager.ViewGroupManager;
 import com.facebook.react.uimanager.events.RCTEventEmitter;
 import com.facebook.react.views.view.ReactViewGroup;
@@ -22,8 +20,6 @@ public class EpicSharedElementView extends ReactViewGroup {
   private static final int UNSET_COORDINATE = Integer.MIN_VALUE;
   private static final int NO_ANCESTOR = -1;
 
-  private final int[] location = new int[2];
-  private final int[] ancestorLocation = new int[2];
   private final ViewTreeObserver.OnPreDrawListener preDrawListener = this::emitFrame;
 
   private int lastX = UNSET_COORDINATE;
@@ -83,6 +79,15 @@ public class EpicSharedElementView extends ReactViewGroup {
     );
   }
 
+  @Override
+  protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+    super.onLayout(changed, left, top, right, bottom);
+    if (changed) {
+      resetLastFrame();
+      updatePreDrawListener();
+    }
+  }
+
   private boolean emitFrame() {
     boolean emitted = emitFrame(getWidth(), getHeight());
 
@@ -98,18 +103,28 @@ public class EpicSharedElementView extends ReactViewGroup {
       return true;
     }
 
-    getLocationInWindow(location);
     View ancestor = findAncestor();
+    if (ancestor == null) return true;
 
-    if (ancestor != null) {
-      ancestor.getLocationInWindow(ancestorLocation);
-      location[0] -= ancestorLocation[0];
-      location[1] -= ancestorLocation[1];
+    // Match iOS: layout relative to the host, excluding animated transforms.
+    int layoutX = 0;
+    int layoutY = 0;
+    View current = this;
+    while (current != ancestor) {
+      if (!(current.getParent() instanceof View)) return true;
+      View parent = (View) current.getParent();
+      layoutX += current.getLeft();
+      layoutY += current.getTop();
+      if (parent != ancestor) {
+        layoutX -= parent.getScrollX();
+        layoutY -= parent.getScrollY();
+      }
+      current = parent;
     }
 
     float density = getResources().getDisplayMetrics().density;
-    int x = Math.round(location[0] / density);
-    int y = Math.round(location[1] / density);
+    int x = Math.round(layoutX / density);
+    int y = Math.round(layoutY / density);
     int widthDp = Math.round(width / density);
     int heightDp = Math.round(height / density);
 
@@ -149,16 +164,6 @@ public class EpicSharedElementView extends ReactViewGroup {
   private View findAncestor() {
     if (ancestorTag == NO_ANCESTOR || !(getContext() instanceof ReactContext)) {
       return null;
-    }
-
-    ReactContext reactContext = (ReactContext) getContext();
-    UIManager uiManager = UIManagerHelper.getUIManagerForReactTag(reactContext, ancestorTag);
-
-    if (uiManager != null) {
-      View ancestor = uiManager.resolveView(ancestorTag);
-      if (ancestor != null) {
-        return ancestor;
-      }
     }
 
     View current = this;

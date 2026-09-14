@@ -42,6 +42,7 @@ export const SharedElementHost = forwardRef<
         ref={hostRef}
         style={[StyleSheet.absoluteFill, style]}
         {...viewProps}
+        collapsable={false}
       >
         {children}
       </View>

@@ -2,6 +2,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   type PropsWithChildren,
   type ReactElement,
@@ -19,10 +20,15 @@ import Animated, {
 import { SharedElementHostContext } from '../context/shared-element-host-context';
 import { useSharedElementRegistry } from '../hooks/use-shared-element-registry';
 import { NativeSharedElement } from '../native/epic-shared-element';
-import type { SharedElementNode, SharedElementRect } from '../common/types';
+import type {
+  SharedElementContentType,
+  SharedElementNode,
+  SharedElementRect,
+} from '../common/types';
 
 export interface SharedElementProps {
   id: string;
+  contentType?: SharedElementContentType;
   borderRadius?: number;
   throttle?: number;
   trackFrame?: boolean;
@@ -39,6 +45,7 @@ export function SharedElement({
 
 export function SharedElementView({
   id,
+  contentType = 'view',
   borderRadius,
   throttle = 16,
   trackFrame = false,
@@ -49,6 +56,11 @@ export function SharedElementView({
   const { register, updateElement, updateRect, unregister } =
     useSharedElementRegistry();
   const ancestorTag = useContext(SharedElementHostContext);
+  if (ancestorTag === undefined) {
+    throw new Error(
+      'SharedElement must be rendered inside a SharedElementHost'
+    );
+  }
   const rect = useSharedValue<SharedElementRect | null>(null);
   const visibility = useSharedValue(1);
   const nodeRef = useRef<SharedElementNode | null>(null);
@@ -56,15 +68,15 @@ export function SharedElementView({
     opacity: visibility.value,
   }));
 
-  useEffect(() => {
-    const node: SharedElementNode = { id, rect, visibility };
+  useLayoutEffect(() => {
+    const node: SharedElementNode = { id, rect, visibility, contentType };
     nodeRef.current = node;
     register(node, children);
     return () => {
       if (nodeRef.current === node) nodeRef.current = null;
       unregister(node);
     };
-  }, [children, id, rect, register, unregister, visibility]);
+  }, [children, contentType, id, rect, register, unregister, visibility]);
   useEffect(() => {
     const node = nodeRef.current;
     if (node) updateElement(node, children);
