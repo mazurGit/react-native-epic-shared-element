@@ -1,25 +1,47 @@
 #import "EpicSharedElementView.h"
 #import <float.h>
+#import <math.h>
 
 @interface EpicSharedElementView ()
 @property(nonatomic, strong) CADisplayLink *displayLink;
-@property(nonatomic, assign) CGRect lastFrame;
+@property(nonatomic, assign) CGRect sampledFrame;
+@property(nonatomic, assign) CGRect emittedFrame;
+@property(nonatomic, strong) NSNumber *emittedBorderRadius;
+@property(nonatomic, assign) NSUInteger stableSampleCount;
+@property(nonatomic, assign) NSUInteger framesSinceEmission;
+@property(nonatomic, assign) BOOL hasSettled;
+@property(nonatomic, assign) BOOL needsMeasurement;
 @property(nonatomic, assign) CFTimeInterval lastEmissionTime;
 @end
+
+static const NSUInteger EpicStableSampleCount = 2;
+static const CGFloat EpicFrameEpsilon = 0.5;
+
+static BOOL EpicFramesEqual(CGRect lhs, CGRect rhs) {
+  if (CGRectIsNull(lhs) || CGRectIsNull(rhs)) return NO;
+  return fabs(lhs.origin.x - rhs.origin.x) <= EpicFrameEpsilon &&
+      fabs(lhs.origin.y - rhs.origin.y) <= EpicFrameEpsilon &&
+      fabs(lhs.size.width - rhs.size.width) <= EpicFrameEpsilon &&
+      fabs(lhs.size.height - rhs.size.height) <= EpicFrameEpsilon;
+}
 
 @implementation EpicSharedElementView
 
 - (instancetype)initWithFrame:(CGRect)frame {
   self = [super initWithFrame:frame];
   if (self) {
-    _lastFrame = CGRectNull;
+    _sampledFrame = CGRectNull;
+    _emittedFrame = CGRectNull;
+    _needsMeasurement = YES;
     _lastEmissionTime = -DBL_MAX;
   }
   return self;
 }
 
 - (void)invalidateMeasurement {
-  self.lastFrame = CGRectNull;
+  self.sampledFrame = CGRectNull;
+  self.stableSampleCount = 0;
+  self.needsMeasurement = YES;
   self.lastEmissionTime = -DBL_MAX;
   if (self.window) [self startTracking];
 }
@@ -64,11 +86,12 @@
 - (void)layoutSubviews {
   [super layoutSubviews];
   // Measure after the mounting transaction, not halfway through ancestor layout.
-  if (self.window) [self startTracking];
+  [self invalidateMeasurement];
 }
 
 - (void)emitFrame {
-  if (!self.onFrame || !self.window || self.bounds.size.width <= 0 || self.bounds.size.height <= 0) {
+  if ((!self.onFrameChange && !self.onFrameSettled) || !self.window ||
+      self.bounds.size.width <= 0 || self.bounds.size.height <= 0) {
     if (!self.trackFrame || !self.window) [self stopTracking];
     return;
   }
@@ -80,19 +103,56 @@
   }
   CGRect frame = [self layoutFrameInAncestor:ancestor];
   if (CGRectIsNull(frame)) return;
-  CFTimeInterval now = CACurrentMediaTime();
-  if (self.throttle > 0 && (now - self.lastEmissionTime) * 1000 < self.throttle) return;
-  if (!CGRectEqualToRect(frame, self.lastFrame)) {
-    self.lastFrame = frame;
-    self.lastEmissionTime = now;
-    NSMutableDictionary *event = [@{
-      @"x": @(frame.origin.x), @"y": @(frame.origin.y),
-      @"width": @(frame.size.width), @"height": @(frame.size.height)
-    } mutableCopy];
-    if (self.borderRadius) event[@"borderRadius"] = self.borderRadius;
-    self.onFrame(event);
+  self.needsMeasurement = NO;
+  BOOL sameFrame = EpicFramesEqual(frame, self.sampledFrame);
+  if (sameFrame) {
+    self.stableSampleCount += 1;
+  } else {
+    self.sampledFrame = frame;
+    self.stableSampleCount = 1;
   }
-  if (!self.trackFrame) [self stopTracking];
+  if (!CGRectIsNull(self.emittedFrame)) self.framesSinceEmission += 1;
+  BOOL frameChanged = CGRectIsNull(self.emittedFrame) ||
+      !EpicFramesEqual(frame, self.emittedFrame) ||
+      !((self.borderRadius == self.emittedBorderRadius) ||
+        [self.borderRadius isEqualToNumber:self.emittedBorderRadius]);
+  CFTimeInterval now = CACurrentMediaTime();
+  if (frameChanged && self.onFrameChange &&
+      !(self.throttle > 0 && (now - self.lastEmissionTime) * 1000 < self.throttle)) {
+    id previous = CGRectIsNull(self.emittedFrame)
+        ? [NSNull null]
+        : [self eventForFrame:self.emittedFrame borderRadius:self.emittedBorderRadius];
+    self.onFrameChange(@{
+      @"previous": previous,
+      @"current": [self eventForFrame:frame borderRadius:self.borderRadius],
+      @"framesDiff": @(CGRectIsNull(self.emittedFrame) ? 0 : self.framesSinceEmission)
+    });
+    self.emittedFrame = frame;
+    self.emittedBorderRadius = self.borderRadius;
+    self.framesSinceEmission = 0;
+    self.lastEmissionTime = now;
+  }
+  if (!self.hasSettled && self.stableSampleCount >= EpicStableSampleCount) {
+    self.hasSettled = YES;
+    if (self.onFrameSettled) {
+      self.onFrameSettled(@{
+        @"current": [self eventForFrame:frame borderRadius:self.borderRadius],
+        @"framesCount": @(self.stableSampleCount)
+      });
+    }
+  }
+  if (!self.trackFrame && self.hasSettled && !self.needsMeasurement) {
+    [self stopTracking];
+  }
+}
+
+- (NSMutableDictionary *)eventForFrame:(CGRect)frame borderRadius:(NSNumber *)borderRadius {
+  NSMutableDictionary *event = [@{
+    @"x": @(frame.origin.x), @"y": @(frame.origin.y),
+    @"width": @(frame.size.width), @"height": @(frame.size.height)
+  } mutableCopy];
+  if (borderRadius) event[@"borderRadius"] = borderRadius;
+  return event;
 }
 
 - (CGRect)layoutFrameInAncestor:(UIView *)ancestor {

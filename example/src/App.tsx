@@ -23,6 +23,7 @@ import {
   SharedElementProvider,
   SharedElementTransition,
   SharedElementPresets,
+  type SharedElementFrameChangeEvent,
 } from 'react-native-epic-shared-element';
 
 /* ------------------------------------------------------------------ */
@@ -193,25 +194,30 @@ const DURATION = 620;
 export default function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailReady, setDetailReady] = useState(false);
+  const [sourceSettledCount, setSourceSettledCount] = useState(0);
+  const [detailSettledCount, setDetailSettledCount] = useState(0);
+  const [observedFrameChange, setObservedFrameChange] = useState(false);
   const progress = useSharedValue(0);
 
   const selected = ARTWORKS.find((a) => a.id === selectedId) ?? null;
 
-  const open = useCallback(
-    (id: string) => {
-      // Mount the destination SharedElement first, then start the transition
-      // after two animation frames so the native onFrame measurement is ready.
-      setSelectedId(id);
-      setDetailReady(false);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          progress.value = withTiming(1, { duration: DURATION }, (finished) => {
-            if (finished) runOnJS(setDetailReady)(true);
-          });
-        });
-      });
+  const open = useCallback((id: string) => {
+    setSelectedId(id);
+    setDetailReady(false);
+  }, []);
+
+  const startDetailTransition = useCallback(() => {
+    setDetailSettledCount((count) => count + 1);
+    progress.value = withTiming(1, { duration: DURATION }, (finished) => {
+      if (finished) runOnJS(setDetailReady)(true);
+    });
+  }, [progress]);
+
+  const observeSourceFrameChange = useCallback(
+    ({ previous, framesDiff }: SharedElementFrameChangeEvent) => {
+      if (previous && framesDiff > 0) setObservedFrameChange(true);
     },
-    [progress]
+    []
   );
 
   const close = useCallback(() => {
@@ -258,6 +264,7 @@ export default function App() {
       <SharedElementHost style={styles.host}>
         {/* ----------------------- Gallery grid ----------------------- */}
         <ScrollView
+          testID="gallery-scroll"
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
@@ -291,6 +298,17 @@ export default function App() {
                 <SharedElement
                   id={`art-${artwork.id}`}
                   borderRadius={artwork.cardRadius}
+                  trackFrame={artwork.id === 'aurora'}
+                  onFrameChange={
+                    artwork.id === 'aurora'
+                      ? observeSourceFrameChange
+                      : undefined
+                  }
+                  onFrameSettled={
+                    artwork.id === 'aurora'
+                      ? () => setSourceSettledCount((count) => count + 1)
+                      : undefined
+                  }
                 >
                   <Hero
                     artwork={artwork}
@@ -332,6 +350,7 @@ export default function App() {
               <SharedElement
                 id={`art-${selected.id}-detail`}
                 borderRadius={selected.detailRadius}
+                onFrameSettled={startDetailTransition}
               >
                 <Hero
                   artwork={selected}
@@ -349,7 +368,7 @@ export default function App() {
                 <Animated.View style={contentStyle}>
                   <View style={styles.detailHeader}>
                     <Text style={styles.detailTitle}>{selected.title}</Text>
-                    <Text style={styles.detailSubtitle}>
+                    <Text testID="detail-artist" style={styles.detailSubtitle}>
                       {selected.artist} · {selected.year}
                     </Text>
                   </View>
@@ -398,6 +417,15 @@ export default function App() {
           >
             <Text style={styles.closeIcon}>✕</Text>
           </Pressable>
+        )}
+        {__DEV__ && (
+          <View style={styles.measurementDiagnostics}>
+            <Text testID="source-settled-count">{sourceSettledCount}</Text>
+            <Text testID="detail-settled-count">{detailSettledCount}</Text>
+            <Text testID="frame-change-observed">
+              {observedFrameChange ? 'changed' : 'waiting'}
+            </Text>
+          </View>
         )}
       </SharedElementHost>
     </SharedElementProvider>
@@ -452,6 +480,12 @@ const styles = StyleSheet.create({
   host: {
     flex: 1,
     backgroundColor: '#0D0D12',
+  },
+  measurementDiagnostics: {
+    position: 'absolute',
+    left: -1000,
+    width: 1,
+    height: 1,
   },
 
   /* ---- Gallery ---- */

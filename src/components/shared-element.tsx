@@ -22,8 +22,10 @@ import { useSharedElementRegistry } from '../hooks/use-shared-element-registry';
 import { NativeSharedElement } from '../native/epic-shared-element';
 import type {
   SharedElementContentType,
+  SharedElementFrameChangeEvent,
   SharedElementNode,
   SharedElementRect,
+  SharedElementSettledEvent,
 } from '../common/types';
 
 export interface SharedElementProps {
@@ -32,6 +34,8 @@ export interface SharedElementProps {
   borderRadius?: number;
   throttle?: number;
   trackFrame?: boolean;
+  onFrameChange?: (event: SharedElementFrameChangeEvent) => void;
+  onFrameSettled?: (event: SharedElementSettledEvent) => void;
   pointerEvents?: ViewProps['pointerEvents'];
   style?: StyleProp<ViewStyle>;
 }
@@ -49,11 +53,13 @@ export function SharedElementView({
   borderRadius,
   throttle = 16,
   trackFrame = false,
+  onFrameChange,
+  onFrameSettled,
   pointerEvents,
   style,
   children,
 }: PropsWithChildren<SharedElementProps & { children: ReactElement }>) {
-  const { register, updateElement, updateRect, unregister } =
+  const { register, updateElement, updateRect, markSettled, unregister } =
     useSharedElementRegistry();
   const ancestorTag = useContext(SharedElementHostContext);
   if (ancestorTag === undefined) {
@@ -64,30 +70,46 @@ export function SharedElementView({
   const rect = useSharedValue<SharedElementRect | null>(null);
   const visibility = useSharedValue(1);
   const nodeRef = useRef<SharedElementNode | null>(null);
+  const elementRef = useRef(children);
+  elementRef.current = children;
   const visibilityStyle = useAnimatedStyle(() => ({
     opacity: visibility.value,
   }));
 
   useLayoutEffect(() => {
-    const node: SharedElementNode = { id, rect, visibility, contentType };
+    const node: SharedElementNode = {
+      id,
+      rect,
+      visibility,
+      contentType,
+    };
     nodeRef.current = node;
-    register(node, children);
+    register(node, elementRef.current);
     return () => {
       if (nodeRef.current === node) nodeRef.current = null;
       unregister(node);
     };
-  }, [children, contentType, id, rect, register, unregister, visibility]);
+  }, [contentType, id, rect, register, unregister, visibility]);
   useEffect(() => {
     const node = nodeRef.current;
     if (node) updateElement(node, children);
   }, [children, updateElement]);
 
   const handleFrame = useCallback(
-    (event: NativeSyntheticEvent<SharedElementRect>) => {
+    (event: NativeSyntheticEvent<SharedElementFrameChangeEvent>) => {
       const node = nodeRef.current;
-      if (node) updateRect(node, event.nativeEvent);
+      if (node) updateRect(node, event.nativeEvent.current);
+      onFrameChange?.(event.nativeEvent);
     },
-    [updateRect]
+    [onFrameChange, updateRect]
+  );
+  const handleFrameSettled = useCallback(
+    (event: NativeSyntheticEvent<SharedElementSettledEvent>) => {
+      const node = nodeRef.current;
+      if (node) markSettled(node, event.nativeEvent.current);
+      onFrameSettled?.(event.nativeEvent);
+    },
+    [markSettled, onFrameSettled]
   );
 
   return (
@@ -99,7 +121,8 @@ export function SharedElementView({
       throttle={throttle}
       trackFrame={trackFrame}
       style={[visibilityStyle, style]}
-      onFrame={handleFrame}
+      onFrameChange={handleFrame}
+      onFrameSettled={handleFrameSettled}
     >
       {children}
     </AnimatedNativeSharedElement>

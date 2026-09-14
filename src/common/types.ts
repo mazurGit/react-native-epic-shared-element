@@ -10,6 +10,17 @@ export interface SharedElementRect {
   borderRadius?: number;
 }
 
+export interface SharedElementFrameChangeEvent {
+  previous: SharedElementRect | null;
+  current: SharedElementRect;
+  framesDiff: number;
+}
+
+export interface SharedElementSettledEvent {
+  current: SharedElementRect;
+  framesCount: number;
+}
+
 export type SharedElementContentType = 'view' | 'text';
 
 export interface SharedElementNode {

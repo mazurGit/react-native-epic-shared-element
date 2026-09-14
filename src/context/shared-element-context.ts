@@ -7,6 +7,7 @@ export interface SharedElementRegistryValue {
   register: (node: SharedElementNode, element: ReactElement) => void;
   updateElement: (node: SharedElementNode, element: ReactElement) => void;
   updateRect: (node: SharedElementNode, rect: SharedElementRect) => void;
+  markSettled: (node: SharedElementNode, rect: SharedElementRect) => void;
   unregister: (node: SharedElementNode) => void;
   waitForStableRects: (
     ids: readonly string[],

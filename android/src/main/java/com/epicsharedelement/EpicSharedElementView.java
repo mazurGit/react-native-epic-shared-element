@@ -14,9 +14,11 @@ import com.facebook.react.uimanager.events.RCTEventEmitter;
 import com.facebook.react.views.view.ReactViewGroup;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 public class EpicSharedElementView extends ReactViewGroup {
+  private static final int STABLE_SAMPLE_COUNT = 2;
   private static final int UNSET_COORDINATE = Integer.MIN_VALUE;
   private static final int NO_ANCESTOR = -1;
 
@@ -26,6 +28,16 @@ public class EpicSharedElementView extends ReactViewGroup {
   private int lastY = UNSET_COORDINATE;
   private int lastWidth;
   private int lastHeight;
+  private int emittedX = UNSET_COORDINATE;
+  private int emittedY = UNSET_COORDINATE;
+  private int emittedWidth;
+  private int emittedHeight;
+  private float emittedBorderRadius = -1f;
+  private int stableSampleCount;
+  private int framesSinceEmission;
+  private boolean hasEmittedFrame;
+  private boolean hasSettled;
+  private boolean needsMeasurement = true;
   private int ancestorTag = NO_ANCESTOR;
   private float borderRadius = -1f;
   private long throttleMs;
@@ -82,16 +94,14 @@ public class EpicSharedElementView extends ReactViewGroup {
   @Override
   protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
     super.onLayout(changed, left, top, right, bottom);
-    if (changed) {
-      resetLastFrame();
-      updatePreDrawListener();
-    }
+    resetLastFrame();
+    updatePreDrawListener();
   }
 
   private boolean emitFrame() {
     boolean emitted = emitFrame(getWidth(), getHeight());
 
-    if (!trackFrame && lastX != UNSET_COORDINATE) {
+    if (!trackFrame && hasSettled && !needsMeasurement) {
       removePreDrawListener();
     }
 
@@ -127,38 +137,81 @@ public class EpicSharedElementView extends ReactViewGroup {
     int y = Math.round(layoutY / density);
     int widthDp = Math.round(width / density);
     int heightDp = Math.round(height / density);
+    needsMeasurement = false;
 
-    if (x == lastX && y == lastY && widthDp == lastWidth && heightDp == lastHeight) {
-      return true;
+    boolean sameFrame = x == lastX && y == lastY
+        && widthDp == lastWidth && heightDp == lastHeight;
+    if (sameFrame) {
+      stableSampleCount++;
+    } else {
+      lastX = x;
+      lastY = y;
+      lastWidth = widthDp;
+      lastHeight = heightDp;
+      stableSampleCount = 1;
     }
-
+    if (hasEmittedFrame) framesSinceEmission++;
+    boolean frameNotEmitted = x != emittedX || y != emittedY
+        || widthDp != emittedWidth || heightDp != emittedHeight
+        || Float.compare(borderRadius, emittedBorderRadius) != 0;
     long now = SystemClock.uptimeMillis();
-    if (throttleMs > 0
-        && lastEmissionTime != Long.MIN_VALUE
-        && now - lastEmissionTime < throttleMs) {
-      return true;
+    if ((!hasEmittedFrame || frameNotEmitted)
+        && !(throttleMs > 0
+            && lastEmissionTime != Long.MIN_VALUE
+            && now - lastEmissionTime < throttleMs)) {
+      WritableMap event = Arguments.createMap();
+      if (hasEmittedFrame) {
+        event.putMap(
+            "previous",
+            createRectEvent(
+                emittedX, emittedY, emittedWidth, emittedHeight, emittedBorderRadius
+            )
+        );
+      } else {
+        event.putNull("previous");
+      }
+      event.putMap("current", createRectEvent(x, y, widthDp, heightDp, borderRadius));
+      event.putInt("framesDiff", hasEmittedFrame ? framesSinceEmission : 0);
+      emitEvent("topFrameChange", event);
+
+      lastEmissionTime = now;
+      emittedX = x;
+      emittedY = y;
+      emittedWidth = widthDp;
+      emittedHeight = heightDp;
+      emittedBorderRadius = borderRadius;
+      hasEmittedFrame = true;
+      framesSinceEmission = 0;
     }
 
-    lastX = x;
-    lastY = y;
-    lastWidth = widthDp;
-    lastHeight = heightDp;
-    lastEmissionTime = now;
+    if (!hasSettled && stableSampleCount >= STABLE_SAMPLE_COUNT) {
+      WritableMap event = Arguments.createMap();
+      event.putMap("current", createRectEvent(x, y, widthDp, heightDp, borderRadius));
+      event.putInt("framesCount", stableSampleCount);
+      hasSettled = true;
+      emitEvent("topFrameSettled", event);
+    }
+    return true;
+  }
 
+  private WritableMap createRectEvent(
+      int x, int y, int width, int height, float radius
+  ) {
     WritableMap event = Arguments.createMap();
     event.putDouble("x", x);
     event.putDouble("y", y);
-    event.putDouble("width", widthDp);
-    event.putDouble("height", heightDp);
-    if (borderRadius >= 0f) {
-      event.putDouble("borderRadius", borderRadius);
+    event.putDouble("width", width);
+    event.putDouble("height", height);
+    if (radius >= 0f) {
+      event.putDouble("borderRadius", radius);
     }
+    return event;
+  }
 
+  private void emitEvent(String eventName, WritableMap event) {
     ((ReactContext) getContext())
         .getJSModule(RCTEventEmitter.class)
-        .receiveEvent(getId(), "topFrame", event);
-
-    return true;
+        .receiveEvent(getId(), eventName, event);
   }
 
   private View findAncestor() {
@@ -182,6 +235,8 @@ public class EpicSharedElementView extends ReactViewGroup {
     lastY = UNSET_COORDINATE;
     lastWidth = 0;
     lastHeight = 0;
+    stableSampleCount = 0;
+    needsMeasurement = true;
     lastEmissionTime = Long.MIN_VALUE;
   }
 
@@ -190,7 +245,7 @@ public class EpicSharedElementView extends ReactViewGroup {
       return;
     }
 
-    if (trackFrame || lastX == UNSET_COORDINATE) {
+    if (trackFrame || needsMeasurement || !hasSettled) {
       addPreDrawListener();
     } else {
       removePreDrawListener();
@@ -244,10 +299,16 @@ public class EpicSharedElementView extends ReactViewGroup {
 
     @Override
     public Map<String, Object> getExportedCustomDirectEventTypeConstants() {
-      return Collections.singletonMap(
-          "topFrame",
-          Collections.singletonMap("registrationName", "onFrame")
+      Map<String, Object> events = new HashMap<>();
+      events.put(
+          "topFrameChange",
+          Collections.singletonMap("registrationName", "onFrameChange")
       );
+      events.put(
+          "topFrameSettled",
+          Collections.singletonMap("registrationName", "onFrameSettled")
+      );
+      return events;
     }
   }
 }

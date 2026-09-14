@@ -9,7 +9,7 @@ import {
 import type { ReactElement } from 'react';
 import { SharedElementContext } from '../context/shared-element-context';
 import type { SharedElementNode, SharedElementRect } from '../common/types';
-import { createStableRectWaiter } from '../common/stable-rects';
+import { createInitialRectWaiter } from '../common/initial-rects';
 
 export type SharedElementProviderProps = PropsWithChildren;
 
@@ -18,8 +18,9 @@ export function SharedElementProvider({
 }: SharedElementProviderProps) {
   const [revision, setRevision] = useState(0);
   const nodes = useRef(new Map<string, SharedElementNode>());
+  const settledIds = useRef(new Set<string>());
   const elements = useRef(new Map<string, ReactElement>());
-  const waiters = useRef(new Set<ReturnType<typeof createStableRectWaiter>>());
+  const waiters = useRef(new Set<ReturnType<typeof createInitialRectWaiter>>());
   useEffect(
     () => () => {
       waiters.current.forEach((waiter) => waiter.cancel());
@@ -29,14 +30,16 @@ export function SharedElementProvider({
   );
   const waitForStableRects = useCallback(
     (ids: readonly string[], callback: () => void) => {
-      const waiter = createStableRectWaiter(ids, () => {
+      if (ids.length === 0) {
+        callback();
+        return () => {};
+      }
+      const waiter = createInitialRectWaiter(ids, () => {
         waiters.current.delete(waiter);
         callback();
       });
       waiters.current.add(waiter);
-      ids.forEach((id) =>
-        waiter.update(id, nodes.current.get(id)?.rect.value ?? null)
-      );
+      ids.forEach((id) => waiter.update(id, settledIds.current.has(id)));
       return () => {
         waiter.cancel();
         waiters.current.delete(waiter);
@@ -51,7 +54,7 @@ export function SharedElementProvider({
       if (existing && existing !== node) return;
       nodes.current.set(node.id, node);
       waiters.current.forEach((waiter) =>
-        waiter.update(node.id, node.rect.value)
+        waiter.update(node.id, settledIds.current.has(node.id))
       );
       elements.current.set(node.id, element);
       setRevision((value) => value + 1);
@@ -69,14 +72,23 @@ export function SharedElementProvider({
     (node: SharedElementNode, rect: SharedElementRect) => {
       if (nodes.current.get(node.id) !== node) return;
       node.rect.value = rect;
-      waiters.current.forEach((waiter) => waiter.update(node.id, rect));
+    },
+    []
+  );
+  const markSettled = useCallback(
+    (node: SharedElementNode, rect: SharedElementRect) => {
+      if (nodes.current.get(node.id) !== node) return;
+      node.rect.value = rect;
+      settledIds.current.add(node.id);
+      waiters.current.forEach((waiter) => waiter.update(node.id, true));
     },
     []
   );
   const unregister = useCallback((node: SharedElementNode) => {
     if (nodes.current.get(node.id) !== node) return;
     nodes.current.delete(node.id);
-    waiters.current.forEach((waiter) => waiter.update(node.id, null));
+    settledIds.current.delete(node.id);
+    waiters.current.forEach((waiter) => waiter.update(node.id, false));
     elements.current.delete(node.id);
     setRevision((value) => value + 1);
   }, []);
@@ -88,6 +100,7 @@ export function SharedElementProvider({
       register,
       updateElement,
       updateRect,
+      markSettled,
       waitForStableRects,
       unregister,
       revision,
@@ -98,6 +111,7 @@ export function SharedElementProvider({
       unregister,
       updateElement,
       updateRect,
+      markSettled,
       waitForStableRects,
     ]
   );

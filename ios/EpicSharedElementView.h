@@ -6,5 +6,6 @@
 @property(nonatomic, assign) CGFloat throttle;
 @property(nonatomic, strong) NSNumber *borderRadius;
 @property(nonatomic, assign) BOOL trackFrame;
-@property(nonatomic, copy) RCTDirectEventBlock onFrame;
+@property(nonatomic, copy) RCTDirectEventBlock onFrameChange;
+@property(nonatomic, copy) RCTDirectEventBlock onFrameSettled;
 @end
