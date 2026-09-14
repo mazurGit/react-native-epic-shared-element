@@ -6,9 +6,12 @@ import {
 } from 'react-native-reanimated';
 import type { ViewStyle } from 'react-native';
 import type {
+  SharedElementContentType,
   SharedElementRect,
   SharedElementTransitionConfig,
 } from '../common/types';
+
+import { getSharedElementSizeStyle } from '../common/transition-size';
 
 const progressBounds = [0.05, 0.95];
 
@@ -18,7 +21,8 @@ export function useSharedElementTransitionStyle(
   end: SharedValue<SharedElementRect | null> | undefined,
   transition: SharedElementTransitionConfig,
   mode: 'resize' | 'zoom',
-  revision: number
+  revision: number,
+  contentType: SharedElementContentType = 'view'
 ) {
   return useAnimatedStyle(() => {
     const startRect = start?.value;
@@ -41,41 +45,13 @@ export function useSharedElementTransitionStyle(
       }) ?? {};
     const opacity = interpolate(value, [0, 0.001, 0.999, 1], [0, 1, 1, 0]);
 
-    const size =
-      mode === 'zoom'
-        ? {
-            width: startRect.width,
-            height: startRect.height,
-            transformOrigin: 'top left' as const,
-            transform: [
-              {
-                scaleX: interpolate(
-                  motionProgress,
-                  [0, 1],
-                  [1, endRect.width / startRect.width]
-                ),
-              },
-              {
-                scaleY: interpolate(
-                  motionProgress,
-                  [0, 1],
-                  [1, endRect.height / startRect.height]
-                ),
-              },
-            ],
-          }
-        : {
-            width: interpolate(
-              motionProgress,
-              [0, 1],
-              [startRect.width, endRect.width]
-            ),
-            height: interpolate(
-              motionProgress,
-              [0, 1],
-              [startRect.height, endRect.height]
-            ),
-          };
+    const size = getSharedElementSizeStyle(
+      motionProgress,
+      startRect,
+      endRect,
+      mode,
+      contentType
+    );
 
     const radius =
       startRect.borderRadius !== undefined && endRect.borderRadius !== undefined
@@ -99,5 +75,5 @@ export function useSharedElementTransitionStyle(
       ...radius,
       transform,
     };
-  }, [mode, revision, transition]);
+  }, [mode, revision, transition, contentType]);
 }

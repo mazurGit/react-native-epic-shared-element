@@ -32,18 +32,25 @@ export function SharedElementTransitionView({
   clip = true,
   transition = SharedElementPresets.linear,
   mode = 'zoom',
+  contentType,
   progress,
 }: SharedElementTransitionProps & { progress: SharedValue<number> }) {
   const { get, getElement, revision } = useSharedElementRegistry();
   const startNode = get(startId);
   const endNode = get(endId);
+  const resolvedContentType =
+    contentType ??
+    (startNode?.contentType === 'text' || endNode?.contentType === 'text'
+      ? 'text'
+      : 'view');
   const animatedStyle = useSharedElementTransitionStyle(
     progress,
     startNode?.rect,
     endNode?.rect,
     transition,
     mode,
-    revision
+    revision,
+    resolvedContentType
   );
   const transitionElement = (element ??
     children ??

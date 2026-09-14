@@ -10,10 +10,13 @@ export interface SharedElementRect {
   borderRadius?: number;
 }
 
+export type SharedElementContentType = 'view' | 'text';
+
 export interface SharedElementNode {
   id: string;
   rect: SharedValue<SharedElementRect | null>;
   visibility: SharedValue<number>;
+  contentType?: SharedElementContentType;
 }
 
 export interface SharedElementTransitionProps {
@@ -25,6 +28,8 @@ export interface SharedElementTransitionProps {
   clip?: boolean;
   transition?: SharedElementTransitionConfig;
   mode?: 'resize' | 'zoom';
+  /** Text preserves glyph proportions with uniform, height-based scaling. */
+  contentType?: SharedElementContentType;
 }
 
 export interface SharedElementTransitionPresetContext {

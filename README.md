@@ -119,6 +119,39 @@ export function Screen() {
 The `SharedElementHost` defines the coordinate space used by native
 measurements.
 
+Every `SharedElement` must be inside a `SharedElementHost`. Native measurements
+are layout coordinates relative to that host: ancestor translations/scales used
+for presentation are excluded, while scroll offsets inside the host are included.
+The host is kept in the native view hierarchy on both Fabric and Paper. Until its
+native ref is ready, no measurement is emitted; there is no fallback to window
+coordinates. Render the transition overlay at the host's origin. If elements use
+different hosts, their origins and coordinate units must be aligned by the caller.
+
+Use `useSharedElementRegistry().waitForStableRects(ids, callback)` to wait until
+all requested elements have finite coordinates and positive sizes which remain
+unchanged for two animation frames. It returns a cancellation function. This API
+does not drive animations or navigation: the caller owns the progress value and
+decides when to animate. With `trackFrame={false}`, measurements update on layout;
+use `trackFrame` to follow scrolling or other ancestor layout changes continuously.
+
+### Text content
+
+Mark text explicitly so a stretched layout box is not mistaken for glyph width:
+
+```tsx
+<SharedElement id="title-small" contentType="text">
+  <Text style={{ fontSize: 26 }}>Orbit</Text>
+</SharedElement>
+```
+
+The transition inherits `contentType="text"` from either endpoint; it can also be
+set directly on `SharedElementTransition`. Text keeps its source layout and uses
+one uniform scale based on the measured height ratio, in both `zoom` and `resize`
+modes. This avoids squeezed/widened letters when the endpoint containers have
+different aspect ratios. It does not interpolate font families, weights, or line
+breaks; use matching text/layout when a seamless handoff is needed. The default
+`contentType="view"` retains the existing view/image sizing behavior.
+
 ---
 
 ## 🎨 Transition Presets
