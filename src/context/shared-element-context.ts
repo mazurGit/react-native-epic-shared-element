@@ -6,7 +6,11 @@ export interface SharedElementRegistryValue {
   getElement: (id: string) => ReactElement | undefined;
   register: (node: SharedElementNode, element: ReactElement) => void;
   updateElement: (node: SharedElementNode, element: ReactElement) => void;
-  updateRect: (node: SharedElementNode, rect: SharedElementRect) => void;
+  updateRect: (
+    node: SharedElementNode,
+    rect: SharedElementRect,
+    stable: boolean
+  ) => void;
   unregister: (node: SharedElementNode) => void;
   waitForStableRects: (
     ids: readonly string[],

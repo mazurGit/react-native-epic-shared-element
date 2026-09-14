@@ -128,11 +128,12 @@ coordinates. Render the transition overlay at the host's origin. If elements use
 different hosts, their origins and coordinate units must be aligned by the caller.
 
 Use `useSharedElementRegistry().waitForStableRects(ids, callback)` to wait until
-all requested elements have finite coordinates and positive sizes which remain
-unchanged for two animation frames. It returns a cancellation function. This API
-does not drive animations or navigation: the caller owns the progress value and
-decides when to animate. With `trackFrame={false}`, measurements update on layout;
-use `trackFrame` to follow scrolling or other ancestor layout changes continuously.
+all requested elements have finite coordinates and positive sizes confirmed by
+two consecutive native display frames. It returns a cancellation function. This
+API does not drive animations or navigation: the caller owns the progress value
+and decides when to animate. With `trackFrame={false}`, native measurement stops
+after confirming a stable layout; use `trackFrame` to follow scrolling or other
+ancestor layout changes continuously.
 
 ### Text content
 

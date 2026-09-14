@@ -3,14 +3,14 @@ import {
   type NativeSyntheticEvent,
   type ViewProps,
 } from 'react-native';
-import type { SharedElementRect } from '../common/types';
+import type { SharedElementFrame } from '../common/types';
 
 export interface NativeSharedElementProps extends ViewProps {
   ancestorTag?: number;
   borderRadius?: number;
   throttle?: number;
   trackFrame?: boolean;
-  onFrame?: (event: NativeSyntheticEvent<SharedElementRect>) => void;
+  onFrame?: (event: NativeSyntheticEvent<SharedElementFrame>) => void;
 }
 
 export const NativeSharedElement =

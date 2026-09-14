@@ -1,63 +1,38 @@
 import type { SharedElementRect } from './types';
 
-/** Releases a waiter only after all requested layouts settle for two frames. */
+/** Releases a waiter after native measurement confirms every requested layout. */
 export function createStableRectWaiter(
   ids: readonly string[],
   callback: () => void
 ) {
   const pending = new Set(ids);
-  const rects = new Map<string, SharedElementRect>();
-  let frame: number | undefined;
   let cancelled = false;
-
-  const cancelFrame = () => {
-    if (frame !== undefined) cancelAnimationFrame(frame);
-    frame = undefined;
-  };
-  const schedule = () => {
-    cancelFrame();
+  const requestedIds = new Set(ids);
+  const completeIfReady = () => {
     if (pending.size || cancelled) return;
-    frame = requestAnimationFrame(() => {
-      frame = requestAnimationFrame(() => {
-        frame = undefined;
-        if (cancelled) return;
-        cancelled = true;
-        callback();
-      });
-    });
+    cancelled = true;
+    callback();
   };
 
-  schedule();
+  completeIfReady();
   return {
-    update(id: string, rect: SharedElementRect | null) {
-      if (cancelled || !ids.includes(id)) return;
+    update(id: string, rect: SharedElementRect | null, stable: boolean) {
+      if (cancelled || !requestedIds.has(id)) return;
       if (
         !rect ||
         ![rect.x, rect.y, rect.width, rect.height].every(Number.isFinite) ||
         rect.width <= 0 ||
         rect.height <= 0
       ) {
-        rects.delete(id);
         pending.add(id);
-        cancelFrame();
         return;
       }
-      const previous = rects.get(id);
-      if (
-        previous?.x === rect.x &&
-        previous.y === rect.y &&
-        previous.width === rect.width &&
-        previous.height === rect.height &&
-        previous.borderRadius === rect.borderRadius
-      )
-        return;
-      rects.set(id, rect);
-      pending.delete(id);
-      schedule();
+      if (stable) pending.delete(id);
+      else pending.add(id);
+      completeIfReady();
     },
     cancel() {
       cancelled = true;
-      cancelFrame();
     },
   };
 }

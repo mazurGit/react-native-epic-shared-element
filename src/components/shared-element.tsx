@@ -22,6 +22,7 @@ import { useSharedElementRegistry } from '../hooks/use-shared-element-registry';
 import { NativeSharedElement } from '../native/epic-shared-element';
 import type {
   SharedElementContentType,
+  SharedElementFrame,
   SharedElementNode,
   SharedElementRect,
 } from '../common/types';
@@ -69,7 +70,13 @@ export function SharedElementView({
   }));
 
   useLayoutEffect(() => {
-    const node: SharedElementNode = { id, rect, visibility, contentType };
+    const node: SharedElementNode = {
+      id,
+      rect,
+      stable: false,
+      visibility,
+      contentType,
+    };
     nodeRef.current = node;
     register(node, children);
     return () => {
@@ -83,9 +90,12 @@ export function SharedElementView({
   }, [children, updateElement]);
 
   const handleFrame = useCallback(
-    (event: NativeSyntheticEvent<SharedElementRect>) => {
+    (event: NativeSyntheticEvent<SharedElementFrame>) => {
       const node = nodeRef.current;
-      if (node) updateRect(node, event.nativeEvent);
+      if (node) {
+        const { stable, ...measuredRect } = event.nativeEvent;
+        updateRect(node, measuredRect, stable);
+      }
     },
     [updateRect]
   );

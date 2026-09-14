@@ -10,11 +10,16 @@ export interface SharedElementRect {
   borderRadius?: number;
 }
 
+export interface SharedElementFrame extends SharedElementRect {
+  stable: boolean;
+}
+
 export type SharedElementContentType = 'view' | 'text';
 
 export interface SharedElementNode {
   id: string;
   rect: SharedValue<SharedElementRect | null>;
+  stable: boolean;
   visibility: SharedValue<number>;
   contentType?: SharedElementContentType;
 }

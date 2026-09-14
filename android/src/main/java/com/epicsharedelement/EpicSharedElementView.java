@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.Map;
 
 public class EpicSharedElementView extends ReactViewGroup {
+  private static final int STABLE_SAMPLE_COUNT = 2;
   private static final int UNSET_COORDINATE = Integer.MIN_VALUE;
   private static final int NO_ANCESTOR = -1;
 
@@ -26,6 +27,13 @@ public class EpicSharedElementView extends ReactViewGroup {
   private int lastY = UNSET_COORDINATE;
   private int lastWidth;
   private int lastHeight;
+  private int emittedX = UNSET_COORDINATE;
+  private int emittedY = UNSET_COORDINATE;
+  private int emittedWidth;
+  private int emittedHeight;
+  private int stableSampleCount;
+  private boolean lastStable;
+  private boolean hasEmittedFrame;
   private int ancestorTag = NO_ANCESTOR;
   private float borderRadius = -1f;
   private long throttleMs;
@@ -82,16 +90,14 @@ public class EpicSharedElementView extends ReactViewGroup {
   @Override
   protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
     super.onLayout(changed, left, top, right, bottom);
-    if (changed) {
-      resetLastFrame();
-      updatePreDrawListener();
-    }
+    resetLastFrame();
+    updatePreDrawListener();
   }
 
   private boolean emitFrame() {
     boolean emitted = emitFrame(getWidth(), getHeight());
 
-    if (!trackFrame && lastX != UNSET_COORDINATE) {
+    if (!trackFrame && hasEmittedFrame && lastStable) {
       removePreDrawListener();
     }
 
@@ -128,9 +134,22 @@ public class EpicSharedElementView extends ReactViewGroup {
     int widthDp = Math.round(width / density);
     int heightDp = Math.round(height / density);
 
-    if (x == lastX && y == lastY && widthDp == lastWidth && heightDp == lastHeight) {
-      return true;
+    boolean sameFrame = x == lastX && y == lastY
+        && widthDp == lastWidth && heightDp == lastHeight;
+    if (sameFrame) {
+      stableSampleCount++;
+    } else {
+      lastX = x;
+      lastY = y;
+      lastWidth = widthDp;
+      lastHeight = heightDp;
+      stableSampleCount = 1;
     }
+    boolean stable = stableSampleCount >= STABLE_SAMPLE_COUNT;
+    boolean frameNotEmitted = x != emittedX || y != emittedY
+        || widthDp != emittedWidth || heightDp != emittedHeight;
+    boolean shouldEmit = !hasEmittedFrame || frameNotEmitted || stable != lastStable;
+    if (!shouldEmit) return true;
 
     long now = SystemClock.uptimeMillis();
     if (throttleMs > 0
@@ -139,17 +158,20 @@ public class EpicSharedElementView extends ReactViewGroup {
       return true;
     }
 
-    lastX = x;
-    lastY = y;
-    lastWidth = widthDp;
-    lastHeight = heightDp;
     lastEmissionTime = now;
+    emittedX = x;
+    emittedY = y;
+    emittedWidth = widthDp;
+    emittedHeight = heightDp;
+    lastStable = stable;
+    hasEmittedFrame = true;
 
     WritableMap event = Arguments.createMap();
     event.putDouble("x", x);
     event.putDouble("y", y);
     event.putDouble("width", widthDp);
     event.putDouble("height", heightDp);
+    event.putBoolean("stable", stable);
     if (borderRadius >= 0f) {
       event.putDouble("borderRadius", borderRadius);
     }
@@ -182,6 +204,13 @@ public class EpicSharedElementView extends ReactViewGroup {
     lastY = UNSET_COORDINATE;
     lastWidth = 0;
     lastHeight = 0;
+    emittedX = UNSET_COORDINATE;
+    emittedY = UNSET_COORDINATE;
+    emittedWidth = 0;
+    emittedHeight = 0;
+    stableSampleCount = 0;
+    lastStable = false;
+    hasEmittedFrame = false;
     lastEmissionTime = Long.MIN_VALUE;
   }
 
@@ -190,7 +219,7 @@ public class EpicSharedElementView extends ReactViewGroup {
       return;
     }
 
-    if (trackFrame || lastX == UNSET_COORDINATE) {
+    if (trackFrame || !hasEmittedFrame || !lastStable) {
       addPreDrawListener();
     } else {
       removePreDrawListener();

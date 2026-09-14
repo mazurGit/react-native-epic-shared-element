@@ -29,13 +29,21 @@ export function SharedElementProvider({
   );
   const waitForStableRects = useCallback(
     (ids: readonly string[], callback: () => void) => {
+      if (ids.length === 0) {
+        callback();
+        return () => {};
+      }
       const waiter = createStableRectWaiter(ids, () => {
         waiters.current.delete(waiter);
         callback();
       });
       waiters.current.add(waiter);
       ids.forEach((id) =>
-        waiter.update(id, nodes.current.get(id)?.rect.value ?? null)
+        waiter.update(
+          id,
+          nodes.current.get(id)?.rect.value ?? null,
+          nodes.current.get(id)?.stable ?? false
+        )
       );
       return () => {
         waiter.cancel();
@@ -51,7 +59,7 @@ export function SharedElementProvider({
       if (existing && existing !== node) return;
       nodes.current.set(node.id, node);
       waiters.current.forEach((waiter) =>
-        waiter.update(node.id, node.rect.value)
+        waiter.update(node.id, node.rect.value, node.stable)
       );
       elements.current.set(node.id, element);
       setRevision((value) => value + 1);
@@ -66,17 +74,18 @@ export function SharedElementProvider({
     []
   );
   const updateRect = useCallback(
-    (node: SharedElementNode, rect: SharedElementRect) => {
+    (node: SharedElementNode, rect: SharedElementRect, stable: boolean) => {
       if (nodes.current.get(node.id) !== node) return;
       node.rect.value = rect;
-      waiters.current.forEach((waiter) => waiter.update(node.id, rect));
+      node.stable = stable;
+      waiters.current.forEach((waiter) => waiter.update(node.id, rect, stable));
     },
     []
   );
   const unregister = useCallback((node: SharedElementNode) => {
     if (nodes.current.get(node.id) !== node) return;
     nodes.current.delete(node.id);
-    waiters.current.forEach((waiter) => waiter.update(node.id, null));
+    waiters.current.forEach((waiter) => waiter.update(node.id, null, false));
     elements.current.delete(node.id);
     setRevision((value) => value + 1);
   }, []);
