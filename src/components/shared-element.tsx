@@ -70,6 +70,8 @@ export function SharedElementView({
   const rect = useSharedValue<SharedElementRect | null>(null);
   const visibility = useSharedValue(1);
   const nodeRef = useRef<SharedElementNode | null>(null);
+  const elementRef = useRef(children);
+  elementRef.current = children;
   const visibilityStyle = useAnimatedStyle(() => ({
     opacity: visibility.value,
   }));
@@ -78,17 +80,16 @@ export function SharedElementView({
     const node: SharedElementNode = {
       id,
       rect,
-      settled: false,
       visibility,
       contentType,
     };
     nodeRef.current = node;
-    register(node, children);
+    register(node, elementRef.current);
     return () => {
       if (nodeRef.current === node) nodeRef.current = null;
       unregister(node);
     };
-  }, [children, contentType, id, rect, register, unregister, visibility]);
+  }, [contentType, id, rect, register, unregister, visibility]);
   useEffect(() => {
     const node = nodeRef.current;
     if (node) updateElement(node, children);

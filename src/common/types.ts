@@ -26,7 +26,6 @@ export type SharedElementContentType = 'view' | 'text';
 export interface SharedElementNode {
   id: string;
   rect: SharedValue<SharedElementRect | null>;
-  settled: boolean;
   visibility: SharedValue<number>;
   contentType?: SharedElementContentType;
 }

@@ -2,10 +2,10 @@
 
 import { copyFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve as pathResolve } from 'node:path';
-import { beforeAll, describe, it } from '@jest/globals';
+import { beforeEach, describe, it } from '@jest/globals';
 
 describe('shared element example', () => {
-  beforeAll(async () => {
+  beforeEach(async () => {
     await device.launchApp({ newInstance: true });
   });
 
@@ -13,6 +13,17 @@ describe('shared element example', () => {
     await expect(element(by.text('Shared moments'))).toBeVisible();
     await expect(element(by.text('Aurora'))).toBeVisible();
     await expect(element(by.id('card-aurora'))).toBeVisible();
+    await waitFor(element(by.id('source-settled-count')))
+      .toHaveText('1')
+      .withTimeout(3000);
+  });
+
+  it('reports frame changes without settling the same mount again', async () => {
+    await element(by.id('gallery-scroll')).scroll(180, 'down');
+    await waitFor(element(by.id('frame-change-observed')))
+      .toHaveText('changed')
+      .withTimeout(3000);
+    await expect(element(by.id('source-settled-count'))).toHaveText('1');
   });
 
   it('opens the detail and closes it again', async () => {
@@ -30,11 +41,13 @@ describe('shared element example', () => {
     mkdirSync(dirname(screenshotPath), { recursive: true });
     copyFileSync(midTransitionScreenshot, screenshotPath);
     console.log(`Mid-transition screenshot: ${midTransitionScreenshot}`);
+    await new Promise((resolve) => setTimeout(resolve, 400));
     await device.enableSynchronization();
 
     // The hero has landed — detail sheet is fully visible.
     await expect(element(by.id('destination-artwork'))).toBeVisible();
-    await expect(element(by.text('Mila Anders'))).toBeVisible();
+    await expect(element(by.id('detail-artist'))).toBeVisible();
+    await expect(element(by.id('detail-settled-count'))).toHaveText('1');
 
     // --- Close the detail overlay ---
     // Disable sync so Detox does not hang on the Reanimated close animation

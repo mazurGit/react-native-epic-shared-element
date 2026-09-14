@@ -18,6 +18,7 @@ export function SharedElementProvider({
 }: SharedElementProviderProps) {
   const [revision, setRevision] = useState(0);
   const nodes = useRef(new Map<string, SharedElementNode>());
+  const settledIds = useRef(new Set<string>());
   const elements = useRef(new Map<string, ReactElement>());
   const waiters = useRef(new Set<ReturnType<typeof createInitialRectWaiter>>());
   useEffect(
@@ -38,9 +39,7 @@ export function SharedElementProvider({
         callback();
       });
       waiters.current.add(waiter);
-      ids.forEach((id) =>
-        waiter.update(id, nodes.current.get(id)?.settled ?? false)
-      );
+      ids.forEach((id) => waiter.update(id, settledIds.current.has(id)));
       return () => {
         waiter.cancel();
         waiters.current.delete(waiter);
@@ -54,7 +53,9 @@ export function SharedElementProvider({
       const existing = nodes.current.get(node.id);
       if (existing && existing !== node) return;
       nodes.current.set(node.id, node);
-      waiters.current.forEach((waiter) => waiter.update(node.id, node.settled));
+      waiters.current.forEach((waiter) =>
+        waiter.update(node.id, settledIds.current.has(node.id))
+      );
       elements.current.set(node.id, element);
       setRevision((value) => value + 1);
     },
@@ -78,7 +79,7 @@ export function SharedElementProvider({
     (node: SharedElementNode, rect: SharedElementRect) => {
       if (nodes.current.get(node.id) !== node) return;
       node.rect.value = rect;
-      node.settled = true;
+      settledIds.current.add(node.id);
       waiters.current.forEach((waiter) => waiter.update(node.id, true));
     },
     []
@@ -86,6 +87,7 @@ export function SharedElementProvider({
   const unregister = useCallback((node: SharedElementNode) => {
     if (nodes.current.get(node.id) !== node) return;
     nodes.current.delete(node.id);
+    settledIds.current.delete(node.id);
     waiters.current.forEach((waiter) => waiter.update(node.id, false));
     elements.current.delete(node.id);
     setRevision((value) => value + 1);
