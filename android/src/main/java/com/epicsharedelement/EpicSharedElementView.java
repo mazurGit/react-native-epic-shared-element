@@ -42,7 +42,7 @@ public class EpicSharedElementView extends ReactViewGroup {
   private float borderRadius = -1f;
   private long throttleMs;
   private long lastEmissionTime = Long.MIN_VALUE;
-  private boolean trackFrame;
+  private boolean trackFrame = true;
   private boolean preDrawListenerAttached;
 
   public EpicSharedElementView(Context context) {
@@ -287,7 +287,7 @@ public class EpicSharedElementView extends ReactViewGroup {
       view.setSharedElementBorderRadius(value);
     }
 
-    @com.facebook.react.uimanager.annotations.ReactProp(name = "trackFrame", defaultBoolean = false)
+    @com.facebook.react.uimanager.annotations.ReactProp(name = "trackFrame", defaultBoolean = true)
     public void setTrackFrame(EpicSharedElementView view, boolean value) {
       view.setTrackFrame(value);
     }

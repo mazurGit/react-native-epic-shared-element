@@ -78,7 +78,11 @@ import {
   SharedElementProvider,
   SharedElementTransition,
 } from 'react-native-epic-shared-element';
-import { useSharedValue, withTiming } from 'react-native-reanimated';
+import {
+  ReduceMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 const artwork = require('./artwork.png');
 
@@ -86,7 +90,10 @@ export function Screen() {
   const progress = useSharedValue(0);
 
   const open = useCallback(() => {
-    progress.value = withTiming(1, { duration: 620 });
+    progress.value = withTiming(1, {
+      duration: 620,
+      reduceMotion: ReduceMotion.Never,
+    });
   }, [progress]);
 
   return (
@@ -119,6 +126,11 @@ export function Screen() {
 The `SharedElementHost` defines the coordinate space used by native
 measurements.
 
+The component reads `progress`; the application owns the animation that updates
+it. Use `reduceMotion: ReduceMotion.Never` on that animation when the shared
+element transition must remain animated while the device's reduced-motion
+setting is enabled.
+
 Every `SharedElement` must be inside a `SharedElementHost`. Native measurements
 are layout coordinates relative to that host: ancestor translations/scales used
 for presentation are excluded, while scroll offsets inside the host are included.
@@ -131,9 +143,9 @@ different hosts, their origins and coordinate units must be aligned by the calle
 previous and current rect plus `framesDiff`, the number of sampled native display
 frames since the previous delivered change. `onFrameSettled` fires once per native
 view, when its initial rect remains unchanged for two consecutive display frames.
-With `trackFrame={false}`, measurement stops after that initial settle and resumes
-for one sample after a later layout. Use `trackFrame` to follow scrolling or other
-ancestor layout changes continuously.
+By default, measurement continues after the initial settle so scrolling and other
+ancestor layout changes keep the rect current. Set `trackFrame={false}` to stop
+continuous measurement; it resumes for one sample after a later element layout.
 
 `useSharedElementRegistry().waitForStableRects(ids, callback)` remains available
 to coordinate the initial settle of several elements. It returns a cancellation
@@ -219,7 +231,7 @@ const customPreset = ({ progress: t, start, end }) => {
 | :------------- | :-------- | :------ | :--------------------------------------------------- |
 | `id`           | `string`  | —       | Unique identifier used by the transition             |
 | `borderRadius` | `number`  | —       | Native border radius, interpolated during transition |
-| `trackFrame`   | `boolean` | `false` | Continuously measure a moving element                |
+| `trackFrame`   | `boolean` | `true`  | Continuously measure a moving element                |
 | `throttle`     | `number`  | `16`    | Frame measurement interval in milliseconds           |
 
 ### `SharedElementTransition`
