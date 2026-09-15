@@ -33,6 +33,7 @@ static BOOL EpicFramesEqual(CGRect lhs, CGRect rhs) {
     _sampledFrame = CGRectNull;
     _emittedFrame = CGRectNull;
     _needsMeasurement = YES;
+    _trackFrame = YES;
     _lastEmissionTime = -DBL_MAX;
   }
   return self;

@@ -52,7 +52,7 @@ export function SharedElementView({
   contentType = 'view',
   borderRadius,
   throttle = 16,
-  trackFrame = false,
+  trackFrame = true,
   onFrameChange,
   onFrameSettled,
   pointerEvents,

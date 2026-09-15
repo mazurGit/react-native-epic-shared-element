@@ -298,7 +298,6 @@ export default function App() {
                 <SharedElement
                   id={`art-${artwork.id}`}
                   borderRadius={artwork.cardRadius}
-                  trackFrame={artwork.id === 'aurora'}
                   onFrameChange={
                     artwork.id === 'aurora'
                       ? observeSourceFrameChange

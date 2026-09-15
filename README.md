@@ -131,9 +131,9 @@ different hosts, their origins and coordinate units must be aligned by the calle
 previous and current rect plus `framesDiff`, the number of sampled native display
 frames since the previous delivered change. `onFrameSettled` fires once per native
 view, when its initial rect remains unchanged for two consecutive display frames.
-With `trackFrame={false}`, measurement stops after that initial settle and resumes
-for one sample after a later layout. Use `trackFrame` to follow scrolling or other
-ancestor layout changes continuously.
+By default, measurement continues after the initial settle so scrolling and other
+ancestor layout changes keep the rect current. Set `trackFrame={false}` to stop
+continuous measurement; it resumes for one sample after a later element layout.
 
 `useSharedElementRegistry().waitForStableRects(ids, callback)` remains available
 to coordinate the initial settle of several elements. It returns a cancellation
@@ -219,7 +219,7 @@ const customPreset = ({ progress: t, start, end }) => {
 | :------------- | :-------- | :------ | :--------------------------------------------------- |
 | `id`           | `string`  | —       | Unique identifier used by the transition             |
 | `borderRadius` | `number`  | —       | Native border radius, interpolated during transition |
-| `trackFrame`   | `boolean` | `false` | Continuously measure a moving element                |
+| `trackFrame`   | `boolean` | `true`  | Continuously measure a moving element                |
 | `throttle`     | `number`  | `16`    | Frame measurement interval in milliseconds           |
 
 ### `SharedElementTransition`
