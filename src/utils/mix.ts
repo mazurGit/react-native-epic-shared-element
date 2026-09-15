@@ -8,7 +8,7 @@ export function mix<T extends readonly SharedElementTransitionStyle[]>(
     'worklet';
     return styles.reduce<ReturnType<SharedElementTransitionStyle>>(
       (result, style) => {
-        const value = style(context);
+        const value = style?.(context);
         const next = Array.isArray(value)
           ? StyleSheet.flatten(value)
           : (value ?? {});
