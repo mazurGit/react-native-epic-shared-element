@@ -12,6 +12,7 @@ import {
 import Animated, {
   Extrapolation,
   interpolate,
+  ReduceMotion,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -208,9 +209,13 @@ export default function App() {
 
   const startDetailTransition = useCallback(() => {
     setDetailSettledCount((count) => count + 1);
-    progress.value = withTiming(1, { duration: DURATION }, (finished) => {
-      if (finished) runOnJS(setDetailReady)(true);
-    });
+    progress.value = withTiming(
+      1,
+      { duration: DURATION, reduceMotion: ReduceMotion.Never },
+      (finished) => {
+        if (finished) runOnJS(setDetailReady)(true);
+      }
+    );
   }, [progress]);
 
   const observeSourceFrameChange = useCallback(
@@ -222,11 +227,15 @@ export default function App() {
 
   const close = useCallback(() => {
     setDetailReady(false);
-    progress.value = withTiming(0, { duration: DURATION }, (finished) => {
-      if (finished) {
-        runOnJS(setSelectedId)(null);
+    progress.value = withTiming(
+      0,
+      { duration: DURATION, reduceMotion: ReduceMotion.Never },
+      (finished) => {
+        if (finished) {
+          runOnJS(setSelectedId)(null);
+        }
       }
-    });
+    );
   }, [progress]);
 
   // Backdrop dims the grid as the hero flies forward.

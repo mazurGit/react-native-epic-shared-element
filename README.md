@@ -78,7 +78,11 @@ import {
   SharedElementProvider,
   SharedElementTransition,
 } from 'react-native-epic-shared-element';
-import { useSharedValue, withTiming } from 'react-native-reanimated';
+import {
+  ReduceMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 const artwork = require('./artwork.png');
 
@@ -86,7 +90,10 @@ export function Screen() {
   const progress = useSharedValue(0);
 
   const open = useCallback(() => {
-    progress.value = withTiming(1, { duration: 620 });
+    progress.value = withTiming(1, {
+      duration: 620,
+      reduceMotion: ReduceMotion.Never,
+    });
   }, [progress]);
 
   return (
@@ -118,6 +125,11 @@ export function Screen() {
 `progress` is a Reanimated `SharedValue<number>` in the range `0..1`.
 The `SharedElementHost` defines the coordinate space used by native
 measurements.
+
+The component reads `progress`; the application owns the animation that updates
+it. Use `reduceMotion: ReduceMotion.Never` on that animation when the shared
+element transition must remain animated while the device's reduced-motion
+setting is enabled.
 
 Every `SharedElement` must be inside a `SharedElementHost`. Native measurements
 are layout coordinates relative to that host: ancestor translations/scales used
