@@ -69,53 +69,65 @@ yarn add react-native-epic-shared-element react-native-reanimated react-native-w
 ## 🚀 Basic Usage
 
 ```tsx
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Button, Image } from 'react-native';
 import {
   SharedElement,
   SharedElementHost,
   SharedElementPresets,
   SharedElementProvider,
-  SharedElementTransition,
+  SharedElementTransitionLayer,
 } from 'react-native-epic-shared-element';
 import {
   ReduceMotion,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 const artwork = require('./artwork.png');
 
 export function Screen() {
   const progress = useSharedValue(0);
+  const [transitionActive, setTransitionActive] = useState(false);
 
   const open = useCallback(() => {
-    progress.value = withTiming(1, {
-      duration: 620,
-      reduceMotion: ReduceMotion.Never,
-    });
+    setTransitionActive(true);
+    progress.value = withTiming(
+      1,
+      { duration: 620, reduceMotion: ReduceMotion.Never },
+      (finished) => {
+        if (finished) scheduleOnRN(setTransitionActive, false);
+      }
+    );
   }, [progress]);
 
   return (
     <SharedElementProvider>
       <SharedElementHost style={{ flex: 1 }}>
-        <Button title="Open artwork" onPress={open} />
+        <SharedElementTransitionLayer
+          active={transitionActive}
+          transitions={[
+            {
+              key: 'artwork',
+              startId: 'artwork-small',
+              endId: 'artwork-large',
+              progress,
+              mode: 'resize',
+              transition: SharedElementPresets.linear,
+            },
+          ]}
+        >
+          <Button title="Open artwork" onPress={open} />
 
-        <SharedElement id="artwork-small" borderRadius={24}>
-          <Image source={artwork} style={{ width: 120, height: 120 }} />
-        </SharedElement>
+          <SharedElement id="artwork-small" borderRadius={24}>
+            <Image source={artwork} style={{ width: 120, height: 120 }} />
+          </SharedElement>
 
-        <SharedElementTransition
-          startId="artwork-small"
-          endId="artwork-large"
-          progress={progress}
-          mode="resize"
-          transition={SharedElementPresets.linear}
-        />
-
-        <SharedElement id="artwork-large" borderRadius={8}>
-          <Image source={artwork} style={{ width: 320, height: 420 }} />
-        </SharedElement>
+          <SharedElement id="artwork-large" borderRadius={8}>
+            <Image source={artwork} style={{ width: 320, height: 420 }} />
+          </SharedElement>
+        </SharedElementTransitionLayer>
       </SharedElementHost>
     </SharedElementProvider>
   );
@@ -130,6 +142,13 @@ The component reads `progress`; the application owns the animation that updates
 it. Use `reduceMotion: ReduceMotion.Never` on that animation when the shared
 element transition must remain animated while the device's reduced-motion
 setting is enabled.
+
+`SharedElementTransitionLayer` mounts transition copies above its children only
+while `active` is true. Set it to true before animating away from either endpoint,
+then set it to false after `progress` reaches `0` or `1`. This keeps completed
+transition copies out of the view tree and supports multiple simultaneous shared
+elements through the `transitions` array. `SharedElementTransition` remains
+available when the consumer needs to manage placement and mounting directly.
 
 Every `SharedElement` must be inside a `SharedElementHost`. Native measurements
 are layout coordinates relative to that host: ancestor translations/scales used
@@ -259,6 +278,19 @@ You can also pass the transition element as a child:
   element={<Image source={artwork} />}
 />
 ```
+
+### `SharedElementTransitionLayer`
+
+| Prop          | Type                                           | Default | Description                                      |
+| :------------ | :--------------------------------------------- | :------ | :----------------------------------------------- |
+| `active`      | `boolean`                                      | —       | Mounts transition copies while an animation runs |
+| `transitions` | `readonly SharedElementTransitionDescriptor[]` | —       | Transition props plus a unique React `key`       |
+| `style`       | `StyleProp<ViewStyle>`                         | —       | Optional style for the absolute overlay          |
+| `children`    | `ReactNode`                                    | —       | Content rendered below the transition overlay    |
+
+Keep the layer inside the same `SharedElementHost` as both endpoints. The layer
+uses that host's coordinate space and renders its overlay after `children`, so
+transition copies appear above the presented content.
 
 ---
 

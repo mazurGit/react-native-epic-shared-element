@@ -5,6 +5,11 @@ export {
 export { SharedElementHost } from './components/shared-element-host';
 export { SharedElement } from './components/shared-element';
 export { SharedElementTransition } from './components/shared-element-transition';
+export {
+  SharedElementTransitionLayer,
+  type SharedElementTransitionDescriptor,
+  type SharedElementTransitionLayerProps,
+} from './components/shared-element-transition-layer';
 export { SharedElementPresets } from './common/transition-presets';
 export { useSharedElementRegistry } from './hooks/use-shared-element-registry';
 export type { SharedElementHostProps } from './components/shared-element-host';

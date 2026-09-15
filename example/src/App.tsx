@@ -22,7 +22,7 @@ import {
   SharedElement,
   SharedElementHost,
   SharedElementProvider,
-  SharedElementTransition,
+  SharedElementTransitionLayer,
   SharedElementPresets,
   type SharedElementFrameChangeEvent,
 } from 'react-native-epic-shared-element';
@@ -271,170 +271,183 @@ export default function App() {
   return (
     <SharedElementProvider>
       <SharedElementHost style={styles.host}>
-        {/* ----------------------- Gallery grid ----------------------- */}
-        <ScrollView
-          testID="gallery-scroll"
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+        <SharedElementTransitionLayer
+          active={Boolean(selected && !detailReady)}
+          transitions={
+            selected
+              ? [
+                  {
+                    key: selected.id,
+                    startId: `art-${selected.id}`,
+                    endId: `art-${selected.id}-detail`,
+                    progress,
+                    mode: 'resize',
+                    transition: SharedElementPresets[selected.transition],
+                  },
+                ]
+              : []
+          }
         >
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.eyebrow}>EPIC / GALLERY</Text>
-              <Text style={styles.title}>Shared moments</Text>
+          {/* ----------------------- Gallery grid ----------------------- */}
+          <ScrollView
+            testID="gallery-scroll"
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.header}>
+              <View>
+                <Text style={styles.eyebrow}>EPIC / GALLERY</Text>
+                <Text style={styles.title}>Shared moments</Text>
+              </View>
+              <View style={styles.badge}>
+                <View style={styles.badgeDot} />
+                <Text style={styles.badgeText}>{ARTWORKS.length} WORKS</Text>
+              </View>
             </View>
-            <View style={styles.badge}>
-              <View style={styles.badgeDot} />
-              <Text style={styles.badgeText}>{ARTWORKS.length} WORKS</Text>
-            </View>
-          </View>
-          <Text style={styles.subtitle}>
-            Tap any work to see its hero fly from the grid to the detail view —
-            measured natively, animated with Reanimated.
-          </Text>
+            <Text style={styles.subtitle}>
+              Tap any work to see its hero fly from the grid to the detail view
+              — measured natively, animated with Reanimated.
+            </Text>
 
-          <View style={styles.grid}>
-            {ARTWORKS.map((artwork) => (
+            <View style={styles.grid}>
+              {ARTWORKS.map((artwork) => (
+                <Pressable
+                  key={artwork.id}
+                  testID={`card-${artwork.id}`}
+                  style={({ pressed }) => [
+                    styles.card,
+                    pressed && styles.cardPressed,
+                  ]}
+                  onPress={() => open(artwork.id)}
+                >
+                  <SharedElement
+                    id={`art-${artwork.id}`}
+                    borderRadius={artwork.cardRadius}
+                    onFrameChange={
+                      artwork.id === 'aurora'
+                        ? observeSourceFrameChange
+                        : undefined
+                    }
+                    onFrameSettled={
+                      artwork.id === 'aurora'
+                        ? () => setSourceSettledCount((count) => count + 1)
+                        : undefined
+                    }
+                  >
+                    <Hero
+                      artwork={artwork}
+                      size="card"
+                      radius={artwork.cardRadius}
+                    />
+                  </SharedElement>
+                  <View style={styles.cardMeta}>
+                    <View style={styles.cardMetaRow}>
+                      <Text style={styles.cardTitle}>{artwork.title}</Text>
+                      <Text style={styles.cardPreset}>
+                        {artwork.transition}
+                      </Text>
+                    </View>
+                    <Text style={styles.cardArtist}>{artwork.artist}</Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+            <View style={styles.footer} />
+          </ScrollView>
+
+          {/* ----------------------- Detail overlay ----------------------- */}
+          {selected && (
+            <Animated.View style={[styles.overlay, backdropStyle]}>
               <Pressable
-                key={artwork.id}
-                testID={`card-${artwork.id}`}
-                style={({ pressed }) => [
-                  styles.card,
-                  pressed && styles.cardPressed,
+                style={styles.backdrop}
+                onPress={close}
+                accessibilityLabel="Close detail"
+              />
+              <Animated.View
+                style={[
+                  styles.sheet,
+                  {
+                    borderTopLeftRadius: selected.detailRadius,
+                    borderTopRightRadius: selected.detailRadius,
+                  },
+                  sheetStyle,
                 ]}
-                onPress={() => open(artwork.id)}
               >
                 <SharedElement
-                  id={`art-${artwork.id}`}
-                  borderRadius={artwork.cardRadius}
-                  onFrameChange={
-                    artwork.id === 'aurora'
-                      ? observeSourceFrameChange
-                      : undefined
-                  }
-                  onFrameSettled={
-                    artwork.id === 'aurora'
-                      ? () => setSourceSettledCount((count) => count + 1)
-                      : undefined
-                  }
+                  id={`art-${selected.id}-detail`}
+                  borderRadius={selected.detailRadius}
+                  onFrameSettled={startDetailTransition}
                 >
                   <Hero
-                    artwork={artwork}
-                    size="card"
-                    radius={artwork.cardRadius}
+                    artwork={selected}
+                    size="detail"
+                    radius={selected.detailRadius}
+                    testID="destination-artwork"
                   />
                 </SharedElement>
-                <View style={styles.cardMeta}>
-                  <View style={styles.cardMetaRow}>
-                    <Text style={styles.cardTitle}>{artwork.title}</Text>
-                    <Text style={styles.cardPreset}>{artwork.transition}</Text>
-                  </View>
-                  <Text style={styles.cardArtist}>{artwork.artist}</Text>
-                </View>
-              </Pressable>
-            ))}
-          </View>
-          <View style={styles.footer} />
-        </ScrollView>
 
-        {/* ----------------------- Detail overlay ----------------------- */}
-        {selected && (
-          <Animated.View style={[styles.overlay, backdropStyle]}>
-            <Pressable
-              style={styles.backdrop}
-              onPress={close}
-              accessibilityLabel="Close detail"
-            />
-            <Animated.View
-              style={[
-                styles.sheet,
-                {
-                  borderTopLeftRadius: selected.detailRadius,
-                  borderTopRightRadius: selected.detailRadius,
-                },
-                sheetStyle,
-              ]}
-            >
-              <SharedElement
-                id={`art-${selected.id}-detail`}
-                borderRadius={selected.detailRadius}
-                onFrameSettled={startDetailTransition}
-              >
-                <Hero
-                  artwork={selected}
-                  size="detail"
-                  radius={selected.detailRadius}
-                  testID="destination-artwork"
-                />
-              </SharedElement>
+                <ScrollView
+                  style={styles.detailScroll}
+                  contentContainerStyle={styles.detailScrollContent}
+                  showsVerticalScrollIndicator={false}
+                >
+                  <Animated.View style={contentStyle}>
+                    <View style={styles.detailHeader}>
+                      <Text style={styles.detailTitle}>{selected.title}</Text>
+                      <Text
+                        testID="detail-artist"
+                        style={styles.detailSubtitle}
+                      >
+                        {selected.artist} · {selected.year}
+                      </Text>
+                    </View>
 
-              <ScrollView
-                style={styles.detailScroll}
-                contentContainerStyle={styles.detailScrollContent}
-                showsVerticalScrollIndicator={false}
-              >
-                <Animated.View style={contentStyle}>
-                  <View style={styles.detailHeader}>
-                    <Text style={styles.detailTitle}>{selected.title}</Text>
-                    <Text testID="detail-artist" style={styles.detailSubtitle}>
-                      {selected.artist} · {selected.year}
+                    <View style={styles.metaRow}>
+                      <View style={styles.metaCell}>
+                        <Text style={styles.metaLabel}>MEDIUM</Text>
+                        <Text style={styles.metaValue}>{selected.medium}</Text>
+                      </View>
+                      <View style={styles.metaCell}>
+                        <Text style={styles.metaLabel}>YEAR</Text>
+                        <Text style={styles.metaValue}>{selected.year}</Text>
+                      </View>
+                      <View style={styles.metaCell}>
+                        <Text style={styles.metaLabel}>EDITION</Text>
+                        <Text style={styles.metaValue}>01 / 01</Text>
+                      </View>
+                    </View>
+
+                    <Text style={styles.detailDescription}>
+                      {selected.description}
                     </Text>
-                  </View>
-
-                  <View style={styles.metaRow}>
-                    <View style={styles.metaCell}>
-                      <Text style={styles.metaLabel}>MEDIUM</Text>
-                      <Text style={styles.metaValue}>{selected.medium}</Text>
-                    </View>
-                    <View style={styles.metaCell}>
-                      <Text style={styles.metaLabel}>YEAR</Text>
-                      <Text style={styles.metaValue}>{selected.year}</Text>
-                    </View>
-                    <View style={styles.metaCell}>
-                      <Text style={styles.metaLabel}>EDITION</Text>
-                      <Text style={styles.metaValue}>01 / 01</Text>
-                    </View>
-                  </View>
-
-                  <Text style={styles.detailDescription}>
-                    {selected.description}
-                  </Text>
-                </Animated.View>
-              </ScrollView>
+                  </Animated.View>
+                </ScrollView>
+              </Animated.View>
             </Animated.View>
-          </Animated.View>
-        )}
+          )}
 
-        {/* ------------- The flying clone (on top of everything) ------------- */}
-        {selected && (
-          <SharedElementTransition
-            startId={`art-${selected.id}`}
-            endId={`art-${selected.id}-detail`}
-            progress={progress}
-            mode="resize"
-            transition={SharedElementPresets[selected.transition]}
-          />
-        )}
-        {selected && detailReady && (
-          <Pressable
-            testID="close-detail"
-            style={styles.closeButtonFloating}
-            onPress={close}
-            accessibilityLabel="Close"
-            hitSlop={12}
-          >
-            <Text style={styles.closeIcon}>✕</Text>
-          </Pressable>
-        )}
-        {__DEV__ && (
-          <View style={styles.measurementDiagnostics}>
-            <Text testID="source-settled-count">{sourceSettledCount}</Text>
-            <Text testID="detail-settled-count">{detailSettledCount}</Text>
-            <Text testID="frame-change-observed">
-              {observedFrameChange ? 'changed' : 'waiting'}
-            </Text>
-          </View>
-        )}
+          {selected && detailReady && (
+            <Pressable
+              testID="close-detail"
+              style={styles.closeButtonFloating}
+              onPress={close}
+              accessibilityLabel="Close"
+              hitSlop={12}
+            >
+              <Text style={styles.closeIcon}>✕</Text>
+            </Pressable>
+          )}
+          {__DEV__ && (
+            <View style={styles.measurementDiagnostics}>
+              <Text testID="source-settled-count">{sourceSettledCount}</Text>
+              <Text testID="detail-settled-count">{detailSettledCount}</Text>
+              <Text testID="frame-change-observed">
+                {observedFrameChange ? 'changed' : 'waiting'}
+              </Text>
+            </View>
+          )}
+        </SharedElementTransitionLayer>
       </SharedElementHost>
     </SharedElementProvider>
   );

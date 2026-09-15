@@ -43,7 +43,10 @@ export function useSharedElementTransitionStyle(
         start: startRect,
         end: endRect,
       }) ?? {};
-    const opacity = interpolate(value, [0, 0.001, 0.999, 1], [0, 1, 1, 0]);
+    const opacity =
+      value >= 1
+        ? 0
+        : interpolate(value, [0, 0.001], [0, 1], Extrapolation.CLAMP);
 
     const size = getSharedElementSizeStyle(
       motionProgress,
