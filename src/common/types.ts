@@ -8,8 +8,6 @@ export interface SharedElementRect {
   width: number;
   height: number;
   borderRadius?: number;
-  contentWidth?: number;
-  contentHeight?: number;
 }
 
 export interface SharedElementFrameChangeEvent {
