@@ -21,13 +21,10 @@ export interface SharedElementSettledEvent {
   framesCount: number;
 }
 
-export type SharedElementContentType = 'view' | 'text';
-
 export interface SharedElementNode {
   id: string;
   rect: SharedValue<SharedElementRect | null>;
   visibility: SharedValue<number>;
-  contentType?: SharedElementContentType;
 }
 
 export interface SharedElementTransitionProps {
@@ -38,9 +35,6 @@ export interface SharedElementTransitionProps {
   element?: ReactElement;
   clip?: boolean;
   transition?: SharedElementTransitionConfig;
-  mode?: 'resize' | 'zoom';
-  /** Text preserves glyph proportions with uniform, height-based scaling. */
-  contentType?: SharedElementContentType;
 }
 
 export interface SharedElementTransitionPresetContext {
@@ -57,6 +51,17 @@ export type SharedElementTransitionDecoration = Pick<
   top?: number;
 };
 
-export type SharedElementTransitionConfig = (
+export type SharedElementTransitionGeometry = SharedElementTransitionStyle;
+
+export type SharedElementTransitionProjection = (
   context: SharedElementTransitionPresetContext
 ) => SharedElementTransitionDecoration | undefined;
+export type SharedElementTransitionTrajectory =
+  SharedElementTransitionProjection;
+export type SharedElementTransitionStyle = (
+  context: SharedElementTransitionPresetContext
+) =>
+  | (SharedElementTransitionDecoration &
+      Partial<Pick<ViewStyle, 'width' | 'height'>>)
+  | undefined;
+export type SharedElementTransitionConfig = SharedElementTransitionStyle;

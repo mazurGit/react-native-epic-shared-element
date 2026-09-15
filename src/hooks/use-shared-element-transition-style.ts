@@ -6,12 +6,9 @@ import {
 } from 'react-native-reanimated';
 import type { ViewStyle } from 'react-native';
 import type {
-  SharedElementContentType,
   SharedElementRect,
   SharedElementTransitionConfig,
 } from '../common/types';
-
-import { getSharedElementSizeStyle } from '../common/transition-size';
 
 const progressBounds = [0.05, 0.95];
 
@@ -19,10 +16,8 @@ export function useSharedElementTransitionStyle(
   progress: SharedValue<number>,
   start: SharedValue<SharedElementRect | null> | undefined,
   end: SharedValue<SharedElementRect | null> | undefined,
-  transition: SharedElementTransitionConfig,
-  mode: 'resize' | 'zoom',
   revision: number,
-  contentType: SharedElementContentType = 'view'
+  transition?: SharedElementTransitionConfig
 ) {
   return useAnimatedStyle(() => {
     const startRect = start?.value;
@@ -37,24 +32,18 @@ export function useSharedElementTransitionStyle(
       [0, 1],
       Extrapolation.CLAMP
     );
-    const decoration =
-      transition({
-        progress: motionProgress,
-        start: startRect,
-        end: endRect,
-      }) ?? {};
     const opacity =
       value >= 1
         ? 0
         : interpolate(value, [0, 0.001], [0, 1], Extrapolation.CLAMP);
 
-    const size = getSharedElementSizeStyle(
-      motionProgress,
-      startRect,
-      endRect,
-      mode,
-      contentType
-    );
+    const size = { width: startRect.width, height: startRect.height };
+    const transitionStyle =
+      transition?.({
+        progress: motionProgress,
+        start: startRect,
+        end: endRect,
+      }) ?? {};
 
     const radius =
       startRect.borderRadius !== undefined && endRect.borderRadius !== undefined
@@ -66,17 +55,18 @@ export function useSharedElementTransitionStyle(
             ),
           }
         : {};
-    const transform = [
-      ...(size.transform ?? []),
-      ...(decoration.transform ?? []),
-    ] as ViewStyle['transform'];
+    const basePosition = {
+      left: startRect.x + (endRect.x - startRect.x) * motionProgress,
+      top: startRect.y + (endRect.y - startRect.y) * motionProgress,
+    };
 
     return {
       opacity,
-      ...decoration,
+      ...basePosition,
       ...size,
+      ...transitionStyle,
       ...radius,
-      transform,
+      transform: transitionStyle.transform as ViewStyle['transform'],
     };
-  }, [mode, revision, transition, contentType]);
+  }, [revision, transition]);
 }

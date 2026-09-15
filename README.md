@@ -11,7 +11,7 @@ It measures views on iOS and Android, then animates their geometry with
 
 - 🎯 Native frame measurement on iOS and Android
 - 🎯 Smooth size and position interpolation between two elements
-- 🎯 `resize` and `zoom` transition modes
+- 🎯 Composable geometry and trajectory presets
 - 🎯 Built-in presets: `linear`, `spiral`, `slingshot`, `arc`, `swoosh`, and `portalWarp`
 - 🎯 Custom transition presets with worklet support
 - 🎯 Optional border-radius interpolation
@@ -113,8 +113,9 @@ export function Screen() {
               startId: 'artwork-small',
               endId: 'artwork-large',
               progress,
-              mode: 'resize',
-              transition: SharedElementPresets.linear,
+              transition: SharedElementPresets
+                .geometry('resize')
+                .trajectory('linear'),
             },
           ]}
         >
@@ -172,21 +173,8 @@ function and does not drive animations or navigation.
 
 ### Text content
 
-Mark text explicitly so a stretched layout box is not mistaken for glyph width:
-
-```tsx
-<SharedElement id="title-small" contentType="text">
-  <Text style={{ fontSize: 26 }}>Orbit</Text>
-</SharedElement>
-```
-
-The transition inherits `contentType="text"` from either endpoint; it can also be
-set directly on `SharedElementTransition`. Text keeps its source layout and uses
-one uniform scale based on the measured height ratio, in both `zoom` and `resize`
-modes. This avoids squeezed/widened letters when the endpoint containers have
-different aspect ratios. It does not interpolate font families, weights, or line
-breaks; use matching text/layout when a seamless handoff is needed. The default
-`contentType="view"` retains the existing view/image sizing behavior.
+The library does not infer text layout. Choose a geometry preset or provide a
+custom geometry callback that matches the content you are animating.
 
 ---
 
@@ -199,8 +187,7 @@ Built-in presets are available from `SharedElementPresets`:
   startId="artwork-small"
   endId="artwork-large"
   progress={progress}
-  mode="resize"
-  transition={SharedElementPresets.spiral}
+  transition={SharedElementPresets.geometry('resize').trajectory('spiral')}
 />
 ```
 
@@ -235,8 +222,7 @@ const customPreset = ({ progress: t, start, end }) => {
   startId="artwork-small"
   endId="artwork-large"
   progress={progress}
-  mode="resize"
-  transition={customPreset}
+  transition={SharedElementPresets.geometry('resize').trajectory(customPreset)}
 />;
 ```
 
@@ -260,13 +246,21 @@ const customPreset = ({ progress: t, start, end }) => {
 | `startId`    | `string`                        | —        | Source shared-element ID                            |
 | `endId`      | `string`                        | —        | Destination shared-element ID                       |
 | `progress`   | `SharedValue<number>`           | —        | Transition progress from `0` to `1`                 |
-| `mode`       | `"resize"` / `"zoom"`           | `"zoom"` | Controls how the element scales between frames      |
-| `transition` | `SharedElementTransitionConfig` | `linear` | Position and decoration preset                      |
+| `transition` | `SharedElementTransitionConfig` | `resize + linear` | Geometry and projection preset          |
 | `clip`       | `boolean`                       | `true`   | Clips the transition element to its animated bounds |
 | `element`    | `ReactElement`                  | —        | Custom element rendered during the transition       |
 
-`resize` interpolates width and height directly from source to destination.
-`zoom` keeps the source frame and scales it to match the destination dimensions.
+Position and `borderRadius` are interpolated from source to destination by
+default. Size remains at the source dimensions unless a geometry preset is used.
+Compose geometry and trajectory independently:
+
+```tsx
+transition={SharedElementPresets.geometry('resize').trajectory('arc')}
+```
+
+Geometry presets are `resize`, `zoom`, `aspectResizeWidth`, and
+`aspectResizeHeight`; trajectory presets are `linear`,
+`spiral`, `slingshot`, `arc`, `swoosh`, and `portalWarp`.
 
 You can also pass the transition element as a child:
 

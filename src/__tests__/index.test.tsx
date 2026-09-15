@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { SharedElementPresets } from '../common/transition-presets';
+import { Projection as SharedElementPresets } from '../utils/transition-projection';
 import type { SharedElementTransitionDecoration } from '../common/types';
 
 const start = { x: 10, y: 20, width: 100, height: 120 };

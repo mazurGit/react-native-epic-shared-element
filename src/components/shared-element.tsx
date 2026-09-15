@@ -21,7 +21,6 @@ import { SharedElementHostContext } from '../context/shared-element-host-context
 import { useSharedElementRegistry } from '../hooks/use-shared-element-registry';
 import { NativeSharedElement } from '../native/epic-shared-element';
 import type {
-  SharedElementContentType,
   SharedElementFrameChangeEvent,
   SharedElementNode,
   SharedElementRect,
@@ -30,7 +29,6 @@ import type {
 
 export interface SharedElementProps {
   id: string;
-  contentType?: SharedElementContentType;
   borderRadius?: number;
   throttle?: number;
   trackFrame?: boolean;
@@ -49,7 +47,6 @@ export function SharedElement({
 
 export function SharedElementView({
   id,
-  contentType = 'view',
   borderRadius,
   throttle = 16,
   trackFrame = true,
@@ -81,7 +78,6 @@ export function SharedElementView({
       id,
       rect,
       visibility,
-      contentType,
     };
     nodeRef.current = node;
     register(node, elementRef.current);
@@ -89,7 +85,7 @@ export function SharedElementView({
       if (nodeRef.current === node) nodeRef.current = null;
       unregister(node);
     };
-  }, [contentType, id, rect, register, unregister, visibility]);
+  }, [id, rect, register, unregister, visibility]);
   useEffect(() => {
     const node = nodeRef.current;
     if (node) updateElement(node, children);

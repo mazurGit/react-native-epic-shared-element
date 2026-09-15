@@ -9,7 +9,7 @@ import {
 import type { ReactElement } from 'react';
 import { SharedElementContext } from '../context/shared-element-context';
 import type { SharedElementNode, SharedElementRect } from '../common/types';
-import { createInitialRectWaiter } from '../common/initial-rects';
+import { createInitialRectWaiter } from '../utils/initial-rects';
 
 export type SharedElementProviderProps = PropsWithChildren;
 
