@@ -13,11 +13,11 @@ import Animated, {
   Extrapolation,
   interpolate,
   ReduceMotion,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import {
   SharedElement,
   SharedElementHost,
@@ -213,7 +213,7 @@ export default function App() {
       1,
       { duration: DURATION, reduceMotion: ReduceMotion.Never },
       (finished) => {
-        if (finished) runOnJS(setDetailReady)(true);
+        if (finished) scheduleOnRN(setDetailReady, true);
       }
     );
   }, [progress]);
@@ -232,7 +232,7 @@ export default function App() {
       { duration: DURATION, reduceMotion: ReduceMotion.Never },
       (finished) => {
         if (finished) {
-          runOnJS(setSelectedId)(null);
+          scheduleOnRN(setSelectedId, null);
         }
       }
     );

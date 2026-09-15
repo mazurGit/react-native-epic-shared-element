@@ -51,7 +51,7 @@ describe('shared element example', () => {
 
     // --- Close the detail overlay ---
     // Disable sync so Detox does not hang on the Reanimated close animation
-    // or the runOnJS unmount that fires from the withTiming callback.
+    // or the scheduled unmount that fires from the withTiming callback.
     await device.disableSynchronization();
     await element(by.id('close-detail')).tap();
     // Wait for the close animation (~620ms) plus the unmount to settle.
