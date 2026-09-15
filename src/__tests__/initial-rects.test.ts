@@ -1,5 +1,5 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import { createInitialRectWaiter } from '../common/initial-rects';
+import { createInitialRectWaiter } from '../utils/initial-rects';
 
 describe('initial shared-element readiness', () => {
   it('waits until every requested element has settled', () => {

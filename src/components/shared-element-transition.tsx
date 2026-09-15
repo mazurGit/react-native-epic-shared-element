@@ -9,7 +9,9 @@ import Animated, {
 import { useSharedElementRegistry } from '../hooks/use-shared-element-registry';
 import { useSharedElementTransitionStyle } from '../hooks/use-shared-element-transition-style';
 import type { SharedElementTransitionProps } from '../common/types';
-import { SharedElementPresets } from '../common/transition-presets';
+import { Projection } from '../utils/transition-projection';
+import { Geometry } from '../utils/transition-geometry';
+import { mix } from '../utils/mix';
 
 const fadeStart = 0.01;
 const fadeEnd = 0.015;
@@ -30,27 +32,18 @@ export function SharedElementTransitionView({
   children,
   element,
   clip = true,
-  transition = SharedElementPresets.linear,
-  mode = 'zoom',
-  contentType,
+  transition = mix(Geometry.resize, Projection.linear),
   progress,
 }: SharedElementTransitionProps & { progress: SharedValue<number> }) {
   const { get, getElement, revision } = useSharedElementRegistry();
   const startNode = get(startId);
   const endNode = get(endId);
-  const resolvedContentType =
-    contentType ??
-    (startNode?.contentType === 'text' || endNode?.contentType === 'text'
-      ? 'text'
-      : 'view');
   const animatedStyle = useSharedElementTransitionStyle(
     progress,
     startNode?.rect,
     endNode?.rect,
-    transition,
-    mode,
     revision,
-    resolvedContentType
+    transition
   );
   const transitionElement = (element ??
     children ??

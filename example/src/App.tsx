@@ -23,7 +23,9 @@ import {
   SharedElementHost,
   SharedElementProvider,
   SharedElementTransitionLayer,
-  SharedElementPresets,
+  Geometry,
+  Projection,
+  mix,
   type SharedElementFrameChangeEvent,
 } from 'react-native-epic-shared-element';
 
@@ -39,7 +41,8 @@ type Palette = {
   caption: string;
 };
 
-type TransitionPresetName = keyof typeof SharedElementPresets;
+type TransitionPresetName =
+  'linear' | 'spiral' | 'slingshot' | 'arc' | 'swoosh' | 'portalWarp';
 
 type Artwork = {
   id: string;
@@ -281,8 +284,10 @@ export default function App() {
                     startId: `art-${selected.id}`,
                     endId: `art-${selected.id}-detail`,
                     progress,
-                    mode: 'resize',
-                    transition: SharedElementPresets[selected.transition],
+                    transition: mix(
+                      Geometry.resize,
+                      Projection[selected.transition]
+                    ),
                   },
                 ]
               : []
