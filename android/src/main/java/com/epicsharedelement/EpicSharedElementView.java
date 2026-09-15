@@ -190,6 +190,10 @@ public class EpicSharedElementView extends ReactViewGroup {
       event.putInt("framesCount", stableSampleCount);
       hasSettled = true;
       emitEvent("topFrameSettled", event);
+    } else if (!hasSettled) {
+      // A static tree may not schedule another draw on its own. Request the
+      // next frame so settlement still requires two consecutive samples.
+      postInvalidateOnAnimation();
     }
     return true;
   }
