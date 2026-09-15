@@ -44,13 +44,17 @@ export const Geometry = {
   text: ({ progress, start, end }) => {
     'worklet';
     const t = interpolate(progress, [0, 1], [0, 1], Extrapolation.CLAMP);
+    const startWidth = start.contentWidth ?? start.width;
+    const endWidth = end.contentWidth ?? end.width;
+    const startHeight = start.contentHeight ?? start.height;
+    const endHeight = end.contentHeight ?? end.height;
     return {
       width: start.width,
       height: start.height,
       transformOrigin: 'top left',
       transform: [
-        { scaleX: 1 + (end.width / start.width - 1) * t },
-        { scaleY: 1 + (end.height / start.height - 1) * t },
+        { scaleX: 1 + (endWidth / startWidth - 1) * t },
+        { scaleY: 1 + (endHeight / startHeight - 1) * t },
       ],
     };
   },
