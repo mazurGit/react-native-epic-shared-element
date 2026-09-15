@@ -1,10 +1,9 @@
 import type { SharedElementTransitionGeometry } from '../common/types';
-import { Extrapolation, interpolate } from 'react-native-reanimated';
 
 export const Geometry = {
   resize: ({ progress, start, end }) => {
     'worklet';
-    const t = interpolate(progress, [0, 1], [0, 1], Extrapolation.CLAMP);
+    const t = progress;
     return {
       width: start.width + (end.width - start.width) * t,
       height: start.height + (end.height - start.height) * t,
@@ -12,7 +11,7 @@ export const Geometry = {
   },
   zoom: ({ progress, start, end }) => {
     'worklet';
-    const t = interpolate(progress, [0, 1], [0, 1], Extrapolation.CLAMP);
+    const t = progress;
     return {
       width: start.width,
       height: start.height,
@@ -25,7 +24,7 @@ export const Geometry = {
   },
   aspectResizeWidth: ({ progress, start, end }) => {
     'worklet';
-    const t = interpolate(progress, [0, 1], [0, 1], Extrapolation.CLAMP);
+    const t = progress;
     const width = start.width + (end.width - start.width) * t;
     return {
       width,
@@ -34,7 +33,7 @@ export const Geometry = {
   },
   aspectResizeHeight: ({ progress, start, end }) => {
     'worklet';
-    const t = interpolate(progress, [0, 1], [0, 1], Extrapolation.CLAMP);
+    const t = progress;
     const height = start.height + (end.height - start.height) * t;
     return {
       width: height * (start.width / start.height),
@@ -43,7 +42,7 @@ export const Geometry = {
   },
   text: ({ progress, start, end }) => {
     'worklet';
-    const t = interpolate(progress, [0, 1], [0, 1], Extrapolation.CLAMP);
+    const t = progress;
     return {
       width: start.width,
       height: start.height,
