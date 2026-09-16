@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { Projection as SharedElementPresets } from '../utils/transition-projection';
+import { Projection } from '../utils/transition-projection';
 import type { SharedElementTransitionDecoration } from '../common/types';
 
 const start = { x: 10, y: 20, width: 100, height: 120 };
@@ -22,8 +22,8 @@ function expectValidDecoration(
   }
 }
 
-describe('SharedElementPresets.linear', () => {
-  const transition = SharedElementPresets.linear;
+describe('Projection.linear', () => {
+  const transition = Projection.linear;
 
   it('starts at the source frame', () => {
     expect(transition({ progress: 0, start, end })).toEqual({
@@ -58,8 +58,8 @@ describe('SharedElementPresets.linear', () => {
   });
 });
 
-describe('SharedElementPresets.spiral', () => {
-  const transition = SharedElementPresets.spiral;
+describe('Projection.spiral', () => {
+  const transition = Projection.spiral;
 
   it('anchors to the source at progress 0', () => {
     const atStart = transition({ progress: 0, start, end });
@@ -123,18 +123,18 @@ describe('SharedElementPresets.spiral', () => {
   });
 });
 
-describe('SharedElementPresets', () => {
+describe('Projection', () => {
   it('exposes both linear and spiral presets', () => {
-    expect(SharedElementPresets).toHaveProperty('linear');
-    expect(SharedElementPresets).toHaveProperty('spiral');
-    expect(typeof SharedElementPresets.linear).toBe('function');
-    expect(typeof SharedElementPresets.spiral).toBe('function');
+    expect(Projection).toHaveProperty('linear');
+    expect(Projection).toHaveProperty('spiral');
+    expect(typeof Projection.linear).toBe('function');
+    expect(typeof Projection.spiral).toBe('function');
   });
 
   it.each(['slingshot', 'arc', 'swoosh', 'portalWarp'] as const)(
     'exposes the %s preset with source and destination anchors',
     (name) => {
-      const transition = SharedElementPresets[name];
+      const transition = Projection[name];
       const atStart = transition({ progress: 0, start, end });
       const atEnd = transition({ progress: 1, start, end });
 

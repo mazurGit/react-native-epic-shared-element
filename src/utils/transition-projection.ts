@@ -1,41 +1,7 @@
 import type {
-  SharedElementTransitionTrajectory,
   SharedElementTransitionConfig,
   SharedElementTransitionDecoration,
 } from '../common/types';
-const baseTrajectory: SharedElementTransitionTrajectory = () => undefined;
-let trajectoryPresets: Record<string, SharedElementTransitionTrajectory> = {};
-
-const offsetTrajectory =
-  (
-    trajectory: SharedElementTransitionTrajectory
-  ): SharedElementTransitionTrajectory =>
-  (context) => {
-    'worklet';
-    const decoration = trajectory(context);
-    if (
-      !decoration ||
-      (decoration.left === undefined && decoration.top === undefined)
-    ) {
-      return decoration;
-    }
-    const baseLeft =
-      context.start.x + (context.end.x - context.start.x) * context.progress;
-    const baseTop =
-      context.start.y + (context.end.y - context.start.y) * context.progress;
-    const transforms = [...(decoration.transform ?? [])];
-    if (decoration.left !== undefined)
-      transforms.unshift({ translateX: decoration.left - baseLeft });
-    if (decoration.top !== undefined)
-      transforms.unshift({ translateY: decoration.top - baseTop });
-    const rest = { ...decoration };
-    delete rest.left;
-    delete rest.top;
-    return {
-      ...rest,
-      transform: transforms as SharedElementTransitionDecoration['transform'],
-    };
-  };
 
 const linear: SharedElementTransitionConfig = ({ progress, start, end }) => {
   'worklet';
@@ -188,24 +154,7 @@ const portalWarp: SharedElementTransitionConfig = ({
   };
 };
 
-trajectoryPresets = {
-  linear: baseTrajectory,
-  spiral: offsetTrajectory(spiral),
-  slingshot: offsetTrajectory(slingshot),
-  arc: offsetTrajectory(arc),
-  swoosh: offsetTrajectory(swoosh),
-  portalWarp: offsetTrajectory(portalWarp),
-};
-
 export const Projection = {
-  trajectory: {
-    linear: baseTrajectory,
-    spiral: trajectoryPresets.spiral,
-    slingshot: trajectoryPresets.slingshot,
-    arc: trajectoryPresets.arc,
-    swoosh: trajectoryPresets.swoosh,
-    portalWarp: trajectoryPresets.portalWarp,
-  },
   linear,
   spiral,
   slingshot,
@@ -213,6 +162,3 @@ export const Projection = {
   swoosh,
   portalWarp,
 };
-
-/** @deprecated Use Projection. */
-export const SharedElementPresets = Projection;

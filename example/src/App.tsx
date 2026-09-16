@@ -23,6 +23,7 @@ import {
   SharedElementHost,
   SharedElementProvider,
   SharedElementTransitionLayer,
+  SharedText,
   Geometry,
   Projection,
   mix,
@@ -289,6 +290,13 @@ export default function App() {
                       Projection[selected.transition]
                     ),
                   },
+                  {
+                    key: `${selected.id}-title`,
+                    startId: `title-${selected.id}`,
+                    endId: `title-${selected.id}-detail`,
+                    progress,
+                    transition: mix(Geometry.zoom, Projection.linear),
+                  },
                 ]
               : []
           }
@@ -348,7 +356,12 @@ export default function App() {
                   </SharedElement>
                   <View style={styles.cardMeta}>
                     <View style={styles.cardMetaRow}>
-                      <Text style={styles.cardTitle}>{artwork.title}</Text>
+                      <SharedText
+                        id={`title-${artwork.id}`}
+                        style={styles.cardTitle}
+                      >
+                        {artwork.title}
+                      </SharedText>
                       <Text style={styles.cardPreset}>
                         {artwork.transition}
                       </Text>
@@ -399,7 +412,12 @@ export default function App() {
                 >
                   <Animated.View style={contentStyle}>
                     <View style={styles.detailHeader}>
-                      <Text style={styles.detailTitle}>{selected.title}</Text>
+                      <SharedText
+                        id={`title-${selected.id}-detail`}
+                        style={styles.detailTitle}
+                      >
+                        {selected.title}
+                      </SharedText>
                       <Text
                         testID="detail-artist"
                         style={styles.detailSubtitle}

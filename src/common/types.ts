@@ -53,11 +53,6 @@ export type SharedElementTransitionDecoration = Pick<
 
 export type SharedElementTransitionGeometry = SharedElementTransitionStyle;
 
-export type SharedElementTransitionProjection = (
-  context: SharedElementTransitionPresetContext
-) => SharedElementTransitionDecoration | undefined;
-export type SharedElementTransitionTrajectory =
-  SharedElementTransitionProjection;
 export type SharedElementTransitionStyle = (
   context: SharedElementTransitionPresetContext
 ) =>
