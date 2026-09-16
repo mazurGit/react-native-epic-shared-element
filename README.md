@@ -74,9 +74,12 @@ import { Button, Image } from 'react-native';
 import {
   SharedElement,
   SharedElementHost,
-  SharedElementPresets,
   SharedElementProvider,
   SharedElementTransitionLayer,
+  SharedText,
+  Geometry,
+  Projection,
+  mix,
 } from 'react-native-epic-shared-element';
 import {
   ReduceMotion,
@@ -113,9 +116,7 @@ export function Screen() {
               startId: 'artwork-small',
               endId: 'artwork-large',
               progress,
-              transition: SharedElementPresets
-                .geometry('resize')
-                .trajectory('linear'),
+              transition: mix(Geometry.resize, Projection.linear),
             },
           ]}
         >
@@ -173,21 +174,40 @@ function and does not drive animations or navigation.
 
 ### Text content
 
-The library does not infer text layout. Choose a geometry preset or provide a
-custom geometry callback that matches the content you are animating.
+`SharedText` is a shared-element variant of React Native's `Text`. It measures
+the widest rendered line and the rendered text height through `onTextLayout`,
+so it can be used directly instead of wrapping a text component in
+`SharedElement`:
+
+```tsx
+<SharedText id="title-small" style={styles.title}>
+  A short title
+</SharedText>
+
+<SharedText id="title-large" style={styles.titleLarge}>
+  A much longer title
+</SharedText>
+
+<SharedElementTransition
+  startId="title-small"
+  endId="title-large"
+  progress={progress}
+  transition={mix(Geometry.zoom, Projection.linear)}
+/>
+```
 
 ---
 
 ## 🎨 Transition Presets
 
-Built-in presets are available from `SharedElementPresets`:
+Built-in presets are available from `Projection`:
 
 ```tsx
 <SharedElementTransition
   startId="artwork-small"
   endId="artwork-large"
   progress={progress}
-  transition={SharedElementPresets.geometry('resize').trajectory('spiral')}
+  transition={mix(Geometry.resize, Projection.spiral)}
 />
 ```
 
@@ -222,7 +242,7 @@ const customPreset = ({ progress: t, start, end }) => {
   startId="artwork-small"
   endId="artwork-large"
   progress={progress}
-  transition={SharedElementPresets.geometry('resize').trajectory(customPreset)}
+  transition={mix(Geometry.resize, customPreset)}
 />;
 ```
 
@@ -255,7 +275,7 @@ default. Size remains at the source dimensions unless a geometry preset is used.
 Compose geometry and trajectory independently:
 
 ```tsx
-transition={SharedElementPresets.geometry('resize').trajectory('arc')}
+transition={mix(Geometry.resize, Projection.arc)}
 ```
 
 Geometry presets are `resize`, `zoom`, `aspectResizeWidth`, and
