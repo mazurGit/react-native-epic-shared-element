@@ -36,14 +36,4 @@ export const Geometry = {
       height,
     };
   },
-  text: ({ progress, start, end }) => {
-    'worklet';
-    const height = start.height + (end.height - start.height) * progress;
-    return {
-      width: start.width,
-      height: start.height,
-      transformOrigin: 'top left',
-      transform: [{ scale: height / start.height }],
-    };
-  },
 } satisfies Record<string, SharedElementTransitionGeometry>;
