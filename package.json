@@ -1,6 +1,6 @@
 {
   "name": "react-native-epic-shared-element",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Native shared-element measurements and Reanimated transitions for React Native.",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
